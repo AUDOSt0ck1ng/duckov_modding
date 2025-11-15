@@ -1,0 +1,65 @@
+{
+  "name": "Duckov Modding Development",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  
+  // 設定容器的功能
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true
+    }
+  },
+
+  // 掛載遊戲 DLL 目錄
+  // 方案 A：使用專案內的 DLL 目錄（推薦，效能更好）
+  "mounts": [
+    "source=${localWorkspaceFolder}/duckov-dlls,target=/duckov,type=bind,readonly"
+  ],
+  
+  // 方案 B：直接從 Windows 掛載（如果您想用原始遊戲目錄）
+  // "mounts": [
+  //   "source=/mnt/c/Program Files (x86)/Steam/steamapps/common/Escape from Duckov,target=/duckov,type=bind,readonly"
+  // ],
+
+  // 環境變數
+  "containerEnv": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+    "DuckovPath": "/duckov"
+  },
+
+  // VS Code 擴充套件
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "formulahendry.dotnet-test-explorer",
+        "kreativ-software.csharpextensions"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "dotnet.defaultSolution": "DisplayItemValue.sln"
+      }
+    }
+  },
+
+  // 容器建立後執行的命令
+  "postCreateCommand": "dotnet --version && echo 'Dev Container 已就緒！'",
+
+  // 保持容器運行
+  "postStartCommand": "echo '歡迎使用 Duckov Modding 開發環境'",
+
+  // 遠端使用者
+  "remoteUser": "root",
+
+  // 工作目錄
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind"
+}
+
+
+
+
