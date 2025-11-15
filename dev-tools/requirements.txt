@@ -1,0 +1,78 @@
+# EquipmentSkinSystem - 開發環境需求清單
+# 此文件列出開發此 Mod 所需的所有工具和依賴
+
+# ============================================
+# .NET 依賴（NuGet 套件）
+# ============================================
+# 這些會在編譯時自動下載
+
+Lib.Harmony==2.4.1
+# 用途：方法攔截和補丁系統
+# 授權：MIT
+# 說明：允許在運行時修改遊戲方法
+
+
+# ============================================
+# 遊戲依賴（需要從遊戲目錄複製）
+# ============================================
+# 這些 DLL 需要從遊戲安裝目錄獲取
+# 路徑：[遊戲目錄]/Duckov_Data/Managed/
+
+# TeamSoda.Duckov.Core.dll
+# TeamSoda.Duckov.Utilities.dll
+# ItemStatsSystem.dll
+# Unity*.dll (所有 Unity 相關 DLL)
+
+
+# ============================================
+# 開發工具（可選，用於反編譯和調試）
+# ============================================
+# 這些工具需要手動安裝
+
+# ILSpy (命令行版本)
+# 安裝命令：dotnet tool install --global ilspycmd
+# 用途：反編譯 .NET DLL 文件，查看遊戲內部代碼
+# 版本：最新版
+# 官網：https://github.com/icsharpcode/ILSpy
+
+# dnSpy (GUI 版本，Windows 推薦)
+# 下載：https://github.com/dnSpy/dnSpy/releases
+# 用途：可視化反編譯和調試 .NET 程序
+# 說明：比命令行版本更直觀，但僅支持 Windows
+
+# JetBrains dotPeek (替代方案)
+# 下載：https://www.jetbrains.com/decompiler/
+# 用途：JetBrains 出品的反編譯工具
+# 說明：功能強大，跨平台
+
+
+# ============================================
+# 編譯環境
+# ============================================
+# .NET SDK 6.0 或更高版本
+# 檢查命令：dotnet --version
+# 下載：https://dotnet.microsoft.com/download
+
+# 目標框架：.NET Standard 2.1
+# 說明：這是遊戲使用的框架版本
+
+
+# ============================================
+# 推薦的 IDE
+# ============================================
+# Visual Studio 2022 (Windows)
+# Visual Studio Code (跨平台)
+# JetBrains Rider (跨平台，付費)
+
+
+# ============================================
+# 其他工具
+# ============================================
+# Git - 版本控制
+# 檢查命令：git --version
+
+# Unity (可選)
+# 版本：根據遊戲使用的版本
+# 用途：如果需要創建自定義資源或預製件
+# 參考：/workspace/UnityFiles/manifest.json
+
