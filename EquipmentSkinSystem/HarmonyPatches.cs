@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 using ItemStatsSystem;
@@ -42,14 +43,6 @@ namespace EquipmentSkinSystem
 
                     Debug.Log($"[EquipmentSkinSystem] Processing slot: {slot.Key}, Content: {(slot.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
 
-                    // 槽位是空的（脫下裝備）
-                    if (slot.Content == null)
-                    {
-                        ClearSocket(socket);
-                        RefreshFacialFeaturesIfNeeded(slot, __instance);
-                        return false; // 不渲染任何東西
-                    }
-
                     // 取得該槽位的外觀配置
                     var slotType = GetSlotTypeFromKey(slot.Key);
                     if (!slotType.HasValue)
@@ -65,10 +58,27 @@ namespace EquipmentSkinSystem
                         return true; // 執行遊戲原方法
                     }
 
-                    // 確定要攔截了，先清除舊模型
-                    ClearSocket(socket);
+                    // 已啟用外觀覆蓋：完全接管渲染
+                    // 先清空整個 Socket（避免殘留）
+                    ClearEntireSocket(socket);
 
-                    // 已啟用外觀覆蓋
+                    // 如果是 HelmatSocket，需要重新渲染頭盔和耳機
+                    if (slotType.Value == EquipmentSlotType.Helmet || slotType.Value == EquipmentSlotType.Headset)
+                    {
+                        RenderHelmatSocketSlots(__instance, socket);
+                        RefreshFacialFeaturesIfNeeded(slot, __instance);
+                        return false;
+                    }
+
+                    // 其他槽位：根據配置渲染
+                    if (slot.Content == null)
+                    {
+                        // 槽位是空的（脫下裝備）
+                        Debug.Log($"[EquipmentSkinSystem] Slot {slotType.Value} is empty, not rendering");
+                        RefreshFacialFeaturesIfNeeded(slot, __instance);
+                        return false;
+                    }
+
                     if (config.SkinItemTypeID == -1)
                     {
                         // ID = -1：隱藏外觀（不渲染）
@@ -80,15 +90,15 @@ namespace EquipmentSkinSystem
                     {
                         // ID > 0：替換外觀
                         Debug.Log($"[EquipmentSkinSystem] Rendering skin {config.SkinItemTypeID} for {slotType.Value}");
-                        RenderSkinEquipment(config.SkinItemTypeID, socket);
+                        RenderEquipment(config.SkinItemTypeID, socket);
                         RefreshFacialFeaturesIfNeeded(slot, __instance);
                         return false;
                     }
                     else
                     {
                         // ID = 0 或其他：使用原始裝備
-                        Debug.Log($"[EquipmentSkinSystem] Rendering original equipment (ID=0) for {slotType.Value}");
-                        RenderOriginalEquipment(slot, socket);
+                        Debug.Log($"[EquipmentSkinSystem] Rendering original equipment for {slotType.Value}");
+                        RenderEquipment(slot.Content.TypeID, socket);
                         RefreshFacialFeaturesIfNeeded(slot, __instance);
                         return false;
                     }
@@ -130,13 +140,86 @@ namespace EquipmentSkinSystem
             }
 
             /// <summary>
-            /// 清除 socket 上的所有子物件
+            /// 清空整個 Socket 的所有子物件
             /// </summary>
-            private static void ClearSocket(Transform socket)
+            private static void ClearEntireSocket(Transform socket)
             {
+                if (socket == null) return;
+
                 for (int i = socket.childCount - 1; i >= 0; i--)
                 {
                     GameObject.Destroy(socket.GetChild(i).gameObject);
+                }
+                Debug.Log($"[EquipmentSkinSystem] Cleared entire socket");
+            }
+
+            /// <summary>
+            /// 渲染 HelmatSocket 上的所有槽位（頭盔 + 耳機）
+            /// 因為它們共用同一個 Socket，必須一起處理
+            /// </summary>
+            private static void RenderHelmatSocketSlots(CharacterEquipmentController controller, Transform socket)
+            {
+                // 取得頭盔和耳機槽位
+                var helmatSlot = Traverse.Create(controller).Field("helmatSlot").GetValue<Slot>();
+                var headsetSlot = Traverse.Create(controller).Field("headsetSlot").GetValue<Slot>();
+
+                var helmatConfig = GetSlotConfig(EquipmentSlotType.Helmet);
+                var headsetConfig = GetSlotConfig(EquipmentSlotType.Headset);
+
+                // 渲染頭盔
+                if (helmatSlot != null && helmatSlot.Content != null)
+                {
+                    if (helmatConfig.UseSkin)
+                    {
+                        if (helmatConfig.SkinItemTypeID == -1)
+                        {
+                            Debug.Log("[EquipmentSkinSystem] Helmet hidden (ID=-1)");
+                        }
+                        else if (helmatConfig.SkinItemTypeID > 0)
+                        {
+                            Debug.Log($"[EquipmentSkinSystem] Rendering helmet skin {helmatConfig.SkinItemTypeID}");
+                            RenderEquipment(helmatConfig.SkinItemTypeID, socket);
+                        }
+                        else
+                        {
+                            Debug.Log($"[EquipmentSkinSystem] Rendering original helmet {helmatSlot.Content.TypeID}");
+                            RenderEquipment(helmatSlot.Content.TypeID, socket);
+                        }
+                    }
+                    else
+                    {
+                        // 未啟用：渲染原本裝備
+                        Debug.Log($"[EquipmentSkinSystem] Rendering original helmet {helmatSlot.Content.TypeID} (skin disabled)");
+                        RenderEquipment(helmatSlot.Content.TypeID, socket);
+                    }
+                }
+
+                // 渲染耳機
+                if (headsetSlot != null && headsetSlot.Content != null)
+                {
+                    if (headsetConfig.UseSkin)
+                    {
+                        if (headsetConfig.SkinItemTypeID == -1)
+                        {
+                            Debug.Log("[EquipmentSkinSystem] Headset hidden (ID=-1)");
+                        }
+                        else if (headsetConfig.SkinItemTypeID > 0)
+                        {
+                            Debug.Log($"[EquipmentSkinSystem] Rendering headset skin {headsetConfig.SkinItemTypeID}");
+                            RenderEquipment(headsetConfig.SkinItemTypeID, socket);
+                        }
+                        else
+                        {
+                            Debug.Log($"[EquipmentSkinSystem] Rendering original headset {headsetSlot.Content.TypeID}");
+                            RenderEquipment(headsetSlot.Content.TypeID, socket);
+                        }
+                    }
+                    else
+                    {
+                        // 未啟用：渲染原本裝備
+                        Debug.Log($"[EquipmentSkinSystem] Rendering original headset {headsetSlot.Content.TypeID} (skin disabled)");
+                        RenderEquipment(headsetSlot.Content.TypeID, socket);
+                    }
                 }
             }
 
@@ -154,11 +237,18 @@ namespace EquipmentSkinSystem
             }
 
             /// <summary>
-            /// 渲染原始裝備
+            /// 渲染裝備（統一方法，根據 TypeID 渲染）
             /// </summary>
-            private static void RenderOriginalEquipment(Slot slot, Transform socket)
+            private static void RenderEquipment(int itemTypeID, Transform socket)
             {
-                ItemAgent agent = slot.Content.AgentUtilities.CreateAgent(
+                Item item = ItemAssetsCollection.InstantiateSync(itemTypeID);
+                if (item == null)
+                {
+                    Debug.LogWarning($"[EquipmentSkinSystem] Failed to instantiate item {itemTypeID}");
+                    return;
+                }
+
+                ItemAgent agent = item.AgentUtilities.CreateAgent(
                     CharacterEquipmentController.equipmentModelHash,
                     ItemAgent.AgentTypes.equipment
                 );
@@ -168,35 +258,11 @@ namespace EquipmentSkinSystem
                     agent.transform.SetParent(socket, worldPositionStays: false);
                     agent.transform.localRotation = Quaternion.identity;
                     agent.transform.localPosition = Vector3.zero;
-                }
-            }
-
-            /// <summary>
-            /// 渲染替換外觀
-            /// </summary>
-            private static void RenderSkinEquipment(int skinItemID, Transform socket)
-            {
-                Item skinItem = ItemAssetsCollection.InstantiateSync(skinItemID);
-                if (skinItem == null)
-                {
-                    Debug.LogWarning($"[EquipmentSkinSystem] Failed to instantiate skin item {skinItemID}");
-                    return;
-                }
-
-                ItemAgent skinAgent = skinItem.AgentUtilities.CreateAgent(
-                    CharacterEquipmentController.equipmentModelHash,
-                    ItemAgent.AgentTypes.equipment
-                );
-
-                if (skinAgent != null)
-                {
-                    skinAgent.transform.SetParent(socket, worldPositionStays: false);
-                    skinAgent.transform.localRotation = Quaternion.identity;
-                    skinAgent.transform.localPosition = Vector3.zero;
+                    Debug.Log($"[EquipmentSkinSystem] Rendered equipment {itemTypeID}");
                 }
                 else
                 {
-                    GameObject.Destroy(skinItem.gameObject);
+                    GameObject.Destroy(item.gameObject);
                 }
             }
 
@@ -308,7 +374,8 @@ namespace EquipmentSkinSystem
                 }
 
                 // 如果是頭盔，同時強制刷新耳機（耳機模型也掛在 HelmatSocket 上）
-                if (slotType == EquipmentSlotType.Helmet)
+                // 但如果正在全局刷新，則跳過（避免重複渲染）
+                if (slotType == EquipmentSlotType.Helmet && !_isRefreshingAll)
                 {
                     var headsetSlot = Traverse.Create(controller)
                                               .Field("headsetSlot")
@@ -355,6 +422,8 @@ namespace EquipmentSkinSystem
             }
         }
 
+        private static bool _isRefreshingAll = false; // 標記是否正在全局刷新
+
         /// <summary>
         /// 強制重新渲染所有裝備槽位（用於 UI 切換外觀後）
         /// </summary>
@@ -362,6 +431,8 @@ namespace EquipmentSkinSystem
         {
             try
             {
+                _isRefreshingAll = true; // 設置標記，避免 ForceRefreshMouthVisibility 重複渲染耳機
+                
                 var mainCharacter = LevelManager.Instance?.MainCharacter;
                 if (mainCharacter == null)
                 {
@@ -384,18 +455,21 @@ namespace EquipmentSkinSystem
                 var headsetSlot = Traverse.Create(controller).Field("headsetSlot").GetValue<Slot>();
 
                 // 強制觸發每個槽位的渲染方法
+                // 注意：渲染順序很重要，避免後渲染的覆蓋前面的
                 if (armorSlot != null)
                     Traverse.Create(controller).Method("ChangeArmorModel", armorSlot).GetValue();
                 
+                if (backpackSlot != null)
+                    Traverse.Create(controller).Method("ChangeBackpackModel", backpackSlot).GetValue();
+                
+                // 頭部裝備：先渲染頭盔和面罩（這會觸發耳機重新渲染，但我們用 _isRefreshingAll 標記跳過）
                 if (helmatSlot != null)
                     Traverse.Create(controller).Method("ChangeHelmatModel", helmatSlot).GetValue();
                 
                 if (faceMaskSlot != null)
                     Traverse.Create(controller).Method("ChangeFaceMaskModel", faceMaskSlot).GetValue();
                 
-                if (backpackSlot != null)
-                    Traverse.Create(controller).Method("ChangeBackpackModel", backpackSlot).GetValue();
-                
+                // 最後渲染耳機，確保耳機在最上層但不會蓋住頭盔
                 if (headsetSlot != null)
                     Traverse.Create(controller).Method("ChangeHeadsetModel", headsetSlot).GetValue();
 
@@ -405,6 +479,10 @@ namespace EquipmentSkinSystem
             {
                 Debug.LogError($"[EquipmentSkinSystem] Error refreshing all equipment: {e.Message}");
                 Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
+            }
+            finally
+            {
+                _isRefreshingAll = false; // 清除標記
             }
         }
 

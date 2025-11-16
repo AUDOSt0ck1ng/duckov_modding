@@ -5,6 +5,8 @@ using UnityEngine.UI;
 using TMPro;
 using Duckov.UI;
 using HarmonyLib;
+using ItemStatsSystem;
+using ItemStatsSystem.Items;
 
 namespace EquipmentSkinSystem
 {
@@ -24,6 +26,7 @@ namespace EquipmentSkinSystem
         {
             public GameObject Container = null!;
             public TextMeshProUGUI SlotNameText = null!;
+            public TextMeshProUGUI CurrentEquipmentText = null!;  // 顯示當前裝備 ID
             public TMP_InputField SkinItemInput = null!;
             public Toggle UseSkinToggle = null!;
             public Button ClearButton = null!;
@@ -41,10 +44,10 @@ namespace EquipmentSkinSystem
         {
             try
             {
-                // 創建圓角 Sprite
-                _roundedSprite = CreateRoundedSprite(200, 200, 20);        // 主面板
-                _roundedButtonSprite = CreateRoundedSprite(100, 50, 15);   // 按鈕
-                _roundedSlotSprite = CreateRoundedSprite(100, 50, 10);     // 槽位
+                // 創建圓角 Sprite（使用優化的抗鋸齒算法）
+                _roundedSprite = CreateRoundedSprite(256, 256, 8);         // 主面板
+                _roundedButtonSprite = CreateRoundedSprite(128, 64, 6);    // 按鈕
+                _roundedSlotSprite = CreateRoundedSprite(128, 64, 4);      // 槽位
                 
                 // 創建主面板
                 _uiPanel = new GameObject("EquipmentSkinUI");
@@ -98,7 +101,7 @@ namespace EquipmentSkinSystem
             RectTransform rect = panel.AddComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(850, 650);
+            rect.sizeDelta = new Vector2(620, 560); // 縮小寬度，增加高度
             rect.anchoredPosition = Vector2.zero;
 
             // 使用圓角 Sprite
@@ -121,7 +124,7 @@ namespace EquipmentSkinSystem
             RectTransform rect = titleObj.AddComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 1f);
             rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(750, 70);
+            rect.sizeDelta = new Vector2(600, 70);
             rect.anchoredPosition = new Vector2(0, -45);
 
             TextMeshProUGUI text = titleObj.AddComponent<TextMeshProUGUI>();
@@ -145,8 +148,8 @@ namespace EquipmentSkinSystem
             RectTransform scrollRect = scrollViewObj.AddComponent<RectTransform>();
             scrollRect.anchorMin = new Vector2(0.5f, 0f);
             scrollRect.anchorMax = new Vector2(0.5f, 1f);
-            scrollRect.offsetMin = new Vector2(-375, 120); // 左下角：距底部120（按鈕區域）
-            scrollRect.offsetMax = new Vector2(375, -80);   // 右上角：距頂部80（標題區域）
+            scrollRect.offsetMin = new Vector2(-290, 110); // 左下角：縮小寬度
+            scrollRect.offsetMax = new Vector2(290, -80);   // 右上角：縮小寬度
 
             Image scrollBg = scrollViewObj.AddComponent<Image>();
             if (_roundedSlotSprite != null)
@@ -189,8 +192,17 @@ namespace EquipmentSkinSystem
 
             scrollComponent.content = contentRect;
 
-            // 為每個槽位創建 UI 元素
-            foreach (EquipmentSlotType slotType in Enum.GetValues(typeof(EquipmentSlotType)))
+            // 為每個槽位創建 UI 元素（按指定順序）
+            EquipmentSlotType[] slotOrder = new EquipmentSlotType[]
+            {
+                EquipmentSlotType.Helmet,   // 頭盔
+                EquipmentSlotType.Armor,    // 護甲
+                EquipmentSlotType.FaceMask, // 面部
+                EquipmentSlotType.Headset,  // 耳機
+                EquipmentSlotType.Backpack  // 背包
+            };
+
+            foreach (EquipmentSlotType slotType in slotOrder)
             {
                 CreateSlotUIElement(contentObj.transform, slotType);
             }
@@ -228,7 +240,12 @@ namespace EquipmentSkinSystem
             elements.UseSkinToggle = CreateToggle(slotObj.transform, slotType);
 
             // 槽位名稱
-            elements.SlotNameText = CreateText(slotObj.transform, GetSlotDisplayName(slotType), 120);
+            elements.SlotNameText = CreateText(slotObj.transform, GetSlotDisplayName(slotType), 80);
+
+            // 當前裝備 ID 顯示
+            elements.CurrentEquipmentText = CreateText(slotObj.transform, "當前: --", 100);
+            elements.CurrentEquipmentText.color = new Color(0.7f, 0.9f, 1f, 1f); // 淺藍色
+            elements.CurrentEquipmentText.fontSize = 14;
 
             // 外觀裝備輸入框
             elements.SkinItemInput = CreateInputField(slotObj.transform, "外觀ID", 150, (value) => OnSkinItemChanged(slotType, value));
@@ -410,7 +427,7 @@ namespace EquipmentSkinSystem
                 image.sprite = _roundedButtonSprite;
                 image.type = Image.Type.Sliced;
             }
-            image.color = new Color(0.2f, 0.5f, 0.7f, 0.9f); // 淺藍色按鈕（遊戲暫停選單風格）
+            image.color = Color.white; // 使用白色基礎，讓 ColorBlock 顏色不被影響
             image.raycastTarget = true;
 
             Button button = buttonObj.AddComponent<Button>();
@@ -421,12 +438,12 @@ namespace EquipmentSkinSystem
                 onClick?.Invoke();
             });
 
-            // 遊戲風格的顏色變化（天藍色系）
+            // 遊戲風格的顏色變化（使用你指定的 RGB 顏色）
             ColorBlock colors = button.colors;
-            colors.normalColor = new Color(0.2f, 0.6f, 0.85f, 0.9f);     // 天藍色
-            colors.highlightedColor = new Color(0.3f, 0.7f, 0.95f, 1f);  // 亮天藍色
-            colors.pressedColor = new Color(0.15f, 0.5f, 0.75f, 1f);     // 深天藍色
-            colors.selectedColor = new Color(0.2f, 0.6f, 0.85f, 0.9f);
+            colors.normalColor = new Color(112f/255f, 204f/255f, 224f/255f, 1f);     // 正常: RGB(112,204,224)
+            colors.highlightedColor = new Color(157f/255f, 220f/255f, 235f/255f, 1f); // 變亮: RGB(157,220,235)
+            colors.pressedColor = new Color(3f/255f, 159f/255f, 196f/255f, 1f);       // 變暗: RGB(3,159,196)
+            colors.selectedColor = new Color(112f/255f, 204f/255f, 224f/255f, 1f);   // 選中後回到正常色
             colors.disabledColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
             colors.colorMultiplier = 1f;
             colors.fadeDuration = 0.1f;
@@ -492,6 +509,9 @@ namespace EquipmentSkinSystem
             };
         }
 
+        private float _lastUpdateTime = 0f;
+        private const float UPDATE_INTERVAL = 0.5f; // 每 0.5 秒更新一次
+
         void Update()
         {
             // 當 UI 開啟時，監聽 ESC 鍵關閉
@@ -499,6 +519,69 @@ namespace EquipmentSkinSystem
             {
                 HideUI();
             }
+
+            // 當 UI 開啟時，定期更新當前裝備顯示（避免每幀都更新）
+            if (_isUIVisible && Time.time - _lastUpdateTime > UPDATE_INTERVAL)
+            {
+                UpdateCurrentEquipmentDisplay();
+                _lastUpdateTime = Time.time;
+            }
+        }
+
+        /// <summary>
+        /// 更新所有槽位的當前裝備 ID 顯示
+        /// </summary>
+        private void UpdateCurrentEquipmentDisplay()
+        {
+            try
+            {
+                var mainCharacter = LevelManager.Instance?.MainCharacter;
+                if (mainCharacter == null) return;
+
+                var equipmentController = mainCharacter.GetComponent<CharacterEquipmentController>();
+                if (equipmentController == null) return;
+
+                // 遊戲使用獨立欄位而非字典，逐個取得
+                foreach (var kvp in _slotUIElements)
+                {
+                    var slotType = kvp.Key;
+                    var elements = kvp.Value;
+
+                    Slot? slot = GetSlotFromController(equipmentController, slotType);
+                    if (slot != null && slot.Content != null)
+                    {
+                        elements.CurrentEquipmentText.text = $"當前: {slot.Content.TypeID}";
+                    }
+                    else
+                    {
+                        elements.CurrentEquipmentText.text = "當前: --";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[EquipmentSkinSystem] Error updating current equipment display: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 從 CharacterEquipmentController 取得指定槽位的 Slot
+        /// </summary>
+        private Slot? GetSlotFromController(CharacterEquipmentController controller, EquipmentSlotType slotType)
+        {
+            string fieldName = slotType switch
+            {
+                EquipmentSlotType.Armor => "armorSlot",
+                EquipmentSlotType.Helmet => "helmatSlot",
+                EquipmentSlotType.FaceMask => "faceMaskSlot",
+                EquipmentSlotType.Backpack => "backpackSlot",
+                EquipmentSlotType.Headset => "headsetSlot",
+                _ => null
+            };
+
+            if (string.IsNullOrEmpty(fieldName)) return null;
+
+            return Traverse.Create(controller).Field(fieldName).GetValue<Slot>();
         }
 
         public void ToggleUI()
@@ -905,82 +988,37 @@ namespace EquipmentSkinSystem
         /// </summary>
         private Sprite CreateRoundedSprite(int width, int height, int cornerRadius)
         {
-            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, true); // 啟用 mipmap
+            texture.filterMode = FilterMode.Trilinear; // 三線性過濾，最平滑
+            texture.wrapMode = TextureWrapMode.Clamp;
             Color[] pixels = new Color[width * height];
             
+            // 使用超採樣抗鋸齒（每個像素採樣 4 次）
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    float alpha = 1f;
+                    float totalAlpha = 0f;
+                    int samples = 4; // 2x2 超採樣
                     
-                    // 左上角
-                    if (x < cornerRadius && y > height - cornerRadius)
+                    for (int sy = 0; sy < 2; sy++)
                     {
-                        float dx = cornerRadius - x;
-                        float dy = y - (height - cornerRadius);
-                        float distance = Mathf.Sqrt(dx * dx + dy * dy);
-                        if (distance > cornerRadius)
+                        for (int sx = 0; sx < 2; sx++)
                         {
-                            alpha = 0f;
-                        }
-                        else if (distance > cornerRadius - 2)
-                        {
-                            alpha = 1f - (distance - (cornerRadius - 2)) / 2f;
-                        }
-                    }
-                    // 右上角
-                    else if (x > width - cornerRadius && y > height - cornerRadius)
-                    {
-                        float dx = x - (width - cornerRadius);
-                        float dy = y - (height - cornerRadius);
-                        float distance = Mathf.Sqrt(dx * dx + dy * dy);
-                        if (distance > cornerRadius)
-                        {
-                            alpha = 0f;
-                        }
-                        else if (distance > cornerRadius - 2)
-                        {
-                            alpha = 1f - (distance - (cornerRadius - 2)) / 2f;
-                        }
-                    }
-                    // 左下角
-                    else if (x < cornerRadius && y < cornerRadius)
-                    {
-                        float dx = cornerRadius - x;
-                        float dy = cornerRadius - y;
-                        float distance = Mathf.Sqrt(dx * dx + dy * dy);
-                        if (distance > cornerRadius)
-                        {
-                            alpha = 0f;
-                        }
-                        else if (distance > cornerRadius - 2)
-                        {
-                            alpha = 1f - (distance - (cornerRadius - 2)) / 2f;
-                        }
-                    }
-                    // 右下角
-                    else if (x > width - cornerRadius && y < cornerRadius)
-                    {
-                        float dx = x - (width - cornerRadius);
-                        float dy = cornerRadius - y;
-                        float distance = Mathf.Sqrt(dx * dx + dy * dy);
-                        if (distance > cornerRadius)
-                        {
-                            alpha = 0f;
-                        }
-                        else if (distance > cornerRadius - 2)
-                        {
-                            alpha = 1f - (distance - (cornerRadius - 2)) / 2f;
+                            float px = x + (sx + 0.5f) / 2f;
+                            float py = y + (sy + 0.5f) / 2f;
+                            
+                            float alpha = CalculateAlpha(px, py, width, height, cornerRadius);
+                            totalAlpha += alpha;
                         }
                     }
                     
-                    pixels[y * width + x] = new Color(1f, 1f, 1f, alpha);
+                    pixels[y * width + x] = new Color(1f, 1f, 1f, totalAlpha / samples);
                 }
             }
             
             texture.SetPixels(pixels);
-            texture.Apply();
+            texture.Apply(true); // 生成 mipmap
             
             Sprite sprite = Sprite.Create(
                 texture,
@@ -993,6 +1031,61 @@ namespace EquipmentSkinSystem
             );
             
             return sprite;
+        }
+        
+        /// <summary>
+        /// 計算指定位置的 alpha 值（用於圓角）
+        /// </summary>
+        private float CalculateAlpha(float x, float y, int width, int height, int cornerRadius)
+        {
+            // 檢查是否在四個角落區域
+            bool inTopLeft = x < cornerRadius && y > height - cornerRadius;
+            bool inTopRight = x > width - cornerRadius && y > height - cornerRadius;
+            bool inBottomLeft = x < cornerRadius && y < cornerRadius;
+            bool inBottomRight = x > width - cornerRadius && y < cornerRadius;
+            
+            if (!inTopLeft && !inTopRight && !inBottomLeft && !inBottomRight)
+            {
+                return 1f; // 不在角落，完全不透明
+            }
+            
+            // 計算到角落中心的距離
+            float dx = 0, dy = 0;
+            
+            if (inTopLeft)
+            {
+                dx = cornerRadius - x;
+                dy = y - (height - cornerRadius);
+            }
+            else if (inTopRight)
+            {
+                dx = x - (width - cornerRadius);
+                dy = y - (height - cornerRadius);
+            }
+            else if (inBottomLeft)
+            {
+                dx = cornerRadius - x;
+                dy = cornerRadius - y;
+            }
+            else if (inBottomRight)
+            {
+                dx = x - (width - cornerRadius);
+                dy = cornerRadius - y;
+            }
+            
+            float distance = Mathf.Sqrt(dx * dx + dy * dy);
+            
+            // 平滑過渡（使用 smoothstep）
+            if (distance > cornerRadius)
+                return 0f;
+            else if (distance < cornerRadius - 1.5f)
+                return 1f;
+            else
+            {
+                // smoothstep 函數提供更平滑的過渡
+                float t = (distance - (cornerRadius - 1.5f)) / 1.5f;
+                return 1f - (t * t * (3f - 2f * t));
+            }
         }
     }
 }
