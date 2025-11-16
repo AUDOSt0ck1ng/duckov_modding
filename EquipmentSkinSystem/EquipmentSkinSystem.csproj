@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <Nullable>enable</Nullable>
+        <IsMac Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))'">true</IsMac>
+        <IsContainer Condition="Exists('/duckov')">true</IsContainer>
+
+        <!-- Dev Container 環境：自動使用 /duckov 路徑 -->
+        <DuckovPath Condition="'$(IsContainer)' == 'true'">/duckov</DuckovPath>
+
+        <!-- 本地開發環境：請根據您的系統填寫遊戲路徑 -->
+        
+        <!-- For Windows users, please fill the folder path which contains Duckov.exe below -->
+        <!-- Windows 用户请在下面这行填写你的鸭科夫安装路径（包含 Duckov.exe 的目录），这样编译器就能找到相关的 dll 文件 -->
+        <DuckovPath Condition="'$(DuckovPath)' == '' AND '$(IsMac)' != 'true'">E:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov</DuckovPath>
+
+        <!-- For Mac users, please fill the folder path which contains Duckov.app below -->
+        <!-- Mac 用户请在下面这行填写你的鸭科夫安装路径（包含 Duckov.app 的目录）-->
+        <DuckovPath Condition="'$(DuckovPath)' == '' AND '$(IsMac)' == 'true'">/Users/Somebody/Library/Application Support/Steam/steamapps/common/Escape from Duckov</DuckovPath>
+
+        <!-- 子路徑設定 -->
+        <SubPath Condition="'$(IsMac)' != 'true'">/Duckov_Data/Managed/</SubPath>
+        <SubPath Condition="'$(IsMac)' == 'true'">/Duckov.app/Contents/Resources/Data/Managed/</SubPath>
+
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="$(DuckovPath)$(SubPath)TeamSoda.*"/>
+        <Reference Include="$(DuckovPath)$(SubPath)ItemStatsSystem.dll"/>
+        <Reference Include="$(DuckovPath)$(SubPath)Unity*"/>
+        <PackageReference Include="Lib.Harmony" Version="2.4.1" />
+    </ItemGroup>
+</Project>
+
