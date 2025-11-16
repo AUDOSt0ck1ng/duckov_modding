@@ -18,7 +18,7 @@ dotnet tool install --global ilspycmd
 ### `DECOMPILE_COMMANDS.sh`
 反編譯遊戲 DLL 的便捷腳本。
 
-**使用方式：**
+**使用方式（反編譯）：**
 ```bash
 cd /workspace/dev-tools
 chmod +x DECOMPILE_COMMANDS.sh

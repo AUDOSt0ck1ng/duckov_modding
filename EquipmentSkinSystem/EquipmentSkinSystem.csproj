@@ -27,7 +27,7 @@
         <Reference Include="$(DuckovPath)$(SubPath)TeamSoda.*"/>
         <Reference Include="$(DuckovPath)$(SubPath)ItemStatsSystem.dll"/>
         <Reference Include="$(DuckovPath)$(SubPath)Unity*"/>
-        <PackageReference Include="Lib.Harmony" Version="2.4.1" />
+        <PackageReference Include="Lib.Harmony" Version="2.2.2" />
     </ItemGroup>
 </Project>
 

@@ -89,21 +89,31 @@ namespace EquipmentSkinSystem
             try
             {
                 _harmony = new Harmony(HarmonyID);
-                
-                // 應用所有補丁（使用 GetExecutingAssembly 避免反射問題）
-                _harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
-                
-                Debug.Log("[EquipmentSkinSystem] Harmony patches applied successfully");
-                
-                // 列出所有已應用的補丁
-                var patchedMethods = _harmony.GetPatchedMethods();
-                int patchCount = 0;
-                foreach (var method in patchedMethods)
+
+                // 僅使用 Type 與 Harmony 的 CreateClassProcessor，避免在舊版 Mono 上存取 System.Reflection.Assembly
+                Type[] patchTypes =
                 {
+                    typeof(HarmonyPatches.ChangeEquipmentModelPatch),
+                    typeof(HarmonyPatches.EquipmentChangeLogger)
+                };
+
+                int patchCount = 0;
+                foreach (var patchType in patchTypes)
+                {
+                    var processor = _harmony.CreateClassProcessor(patchType);
+                    processor.Patch();
                     patchCount++;
-                    Debug.Log($"[EquipmentSkinSystem] Patched: {method.DeclaringType?.Name}.{method.Name}");
+                    Debug.Log($"[EquipmentSkinSystem] Patched class: {patchType.FullName}");
                 }
-                Debug.Log($"[EquipmentSkinSystem] Total patches applied: {patchCount}");
+
+                if (patchCount == 0)
+                {
+                    Debug.LogWarning("[EquipmentSkinSystem] No Harmony patches were applied. Please verify target CLR support.");
+                }
+                else
+                {
+                    Debug.Log($"[EquipmentSkinSystem] Total patches applied: {patchCount}");
+                }
             }
             catch (Exception e)
             {

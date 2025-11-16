@@ -227,9 +227,9 @@ namespace EquipmentSkinSystem
                 if (controller == null) return;
 
                 // 取得 CharacterMainControl（private 字段）
-                var controllerType = typeof(CharacterEquipmentController);
-                var cmField = controllerType.GetField("characterMainControl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var cm = cmField?.GetValue(controller) as CharacterMainControl;
+                var cm = Traverse.Create(controller)
+                                 .Field("characterMainControl")
+                                 .GetValue<CharacterMainControl>();
                 if (cm == null)
                 {
                     Debug.LogWarning("[EquipmentSkinSystem] ForceRefreshMouthVisibility: characterMainControl not found");
@@ -246,15 +246,15 @@ namespace EquipmentSkinSystem
                 // 建一個 Content 為 null 的臨時 Slot，讓遊戲邏輯認為「這個槽位沒有裝備」
                 var tempSlot = new Slot();
 
-                var modelType = typeof(CharacterModel);
                 string methodName = slotType == EquipmentSlotType.Helmet
                     ? "OnHelmatSlotContentChange"
                     : "OnFaceMaskSlotContentChange";
 
-                var method = modelType.GetMethod(methodName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (method != null)
+                var traverseModel = Traverse.Create(model);
+                var methodTraverse = traverseModel.Method(methodName, new object[] { tempSlot });
+                if (methodTraverse != null)
                 {
-                    method.Invoke(model, new object[] { tempSlot });
+                    methodTraverse.GetValue();
                     Debug.Log($"[EquipmentSkinSystem] ForceRefreshMouthVisibility: invoked {methodName}");
                 }
                 else
@@ -265,15 +265,16 @@ namespace EquipmentSkinSystem
                 // 如果是頭盔，同時強制刷新耳機（耳機模型也掛在 HelmatSocket 上）
                 if (slotType == EquipmentSlotType.Helmet)
                 {
-                    var headsetField = controllerType.GetField("headsetSlot", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var headsetSlot = headsetField?.GetValue(controller) as Slot;
+                    var headsetSlot = Traverse.Create(controller)
+                                              .Field("headsetSlot")
+                                              .GetValue<Slot>();
 
                     if (headsetSlot != null && headsetSlot.Content != null)
                     {
-                        var changeHeadsetMethod = controllerType.GetMethod("ChangeHeadsetModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        if (changeHeadsetMethod != null)
+                        var changeHeadsetTraverse = Traverse.Create(controller).Method("ChangeHeadsetModel", new object[] { headsetSlot });
+                        if (changeHeadsetTraverse != null)
                         {
-                            changeHeadsetMethod.Invoke(controller, new object[] { headsetSlot });
+                            changeHeadsetTraverse.GetValue();
                             Debug.Log("[EquipmentSkinSystem] ForceRefreshMouthVisibility: refreshed headset model");
                         }
                     }

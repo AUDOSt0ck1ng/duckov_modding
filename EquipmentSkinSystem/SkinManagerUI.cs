@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Duckov.UI;
+using HarmonyLib;
 
 namespace EquipmentSkinSystem
 {
@@ -706,10 +707,10 @@ namespace EquipmentSkinSystem
                     return;
                 }
 
-                // 透過反射取得 CharacterMainControl 裡的 private 字段 characterItem
-                var playerType = typeof(CharacterMainControl);
-                var characterItemField = playerType.GetField("characterItem", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var characterItem = characterItemField?.GetValue(player);
+                // 透過 Harmony Traverse 取得 private 字段 characterItem（避免直接引用 System.Reflection）
+                var characterItem = Traverse.Create(player)
+                                            .Field("characterItem")
+                                            .GetValue<object>();
                 if (characterItem == null)
                 {
                     Debug.LogWarning("[EquipmentSkinSystem] Cannot find characterItem field on player");
@@ -718,14 +719,7 @@ namespace EquipmentSkinSystem
 
                 // 取得 Slots 屬性
                 var itemType = characterItem.GetType();
-                var slotsProperty = itemType.GetProperty("Slots");
-                if (slotsProperty == null)
-                {
-                    Debug.LogWarning("[EquipmentSkinSystem] Cannot find Slots property on Item");
-                    return;
-                }
-
-                var slots = slotsProperty.GetValue(characterItem);
+                var slots = Traverse.Create(characterItem).Property("Slots").GetValue();
                 if (slots == null)
                 {
                     Debug.LogWarning("[EquipmentSkinSystem] Slots is null");
@@ -741,15 +735,14 @@ namespace EquipmentSkinSystem
                 }
 
                 int slotHash = slotKey.GetHashCode();
-                // 指定參數類型以避免 Ambiguous match
-                var getSlotMethod = slots.GetType().GetMethod("GetSlot", new Type[] { typeof(int) });
-                if (getSlotMethod == null)
+                var slotTraverse = Traverse.Create(slots).Method("GetSlot", new object[] { slotHash });
+                if (slotTraverse == null)
                 {
                     Debug.LogWarning("[EquipmentSkinSystem] Cannot find GetSlot(int) method on Slots");
                     return;
                 }
 
-                var slot = getSlotMethod.Invoke(slots, new object[] { slotHash });
+                var slot = slotTraverse.GetValue();
                 if (slot == null)
                 {
                     Debug.LogWarning($"[EquipmentSkinSystem] Cannot find slot: {slotKey}");
