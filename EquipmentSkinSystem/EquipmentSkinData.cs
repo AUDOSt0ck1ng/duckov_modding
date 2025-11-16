@@ -5,6 +5,16 @@ using UnityEngine;
 namespace EquipmentSkinSystem
 {
     /// <summary>
+    /// 角色類型（玩家或狗）
+    /// </summary>
+    [Serializable]
+    public enum CharacterType
+    {
+        Player,     // 玩家
+        Pet         // 狗
+    }
+
+    /// <summary>
     /// 裝備槽位類型（對應遊戲實際的槽位）
     /// </summary>
     [Serializable]
@@ -80,7 +90,7 @@ namespace EquipmentSkinSystem
             
             RebuildDictionary();
             
-            Debug.Log($"[EquipmentSkinSystem] CharacterSkinProfile created with {SlotConfigsList.Count} slots");
+            Logger.Debug($"CharacterSkinProfile created with {SlotConfigsList.Count} slots");
         }
         
         /// <summary>
@@ -166,73 +176,106 @@ namespace EquipmentSkinSystem
             }
         }
 
-        private CharacterSkinProfile _currentProfile;
-        public CharacterSkinProfile CurrentProfile => _currentProfile;
+        private CharacterSkinProfile _playerProfile;
+        private CharacterSkinProfile _petProfile;
+        private CharacterType _currentCharacterType = CharacterType.Player;
+
+        public CharacterSkinProfile PlayerProfile => _playerProfile;
+        public CharacterSkinProfile PetProfile => _petProfile;
+        public CharacterType CurrentCharacterType => _currentCharacterType;
+        
+        // 當前選中的角色配置
+        public CharacterSkinProfile CurrentProfile => _currentCharacterType == CharacterType.Player ? _playerProfile : _petProfile;
 
         private EquipmentSkinDataManager()
         {
-            _currentProfile = new CharacterSkinProfile("Default");
+            _playerProfile = new CharacterSkinProfile("Player");
+            _petProfile = new CharacterSkinProfile("Pet");
         }
 
         /// <summary>
-        /// 保存配置到 JSON（手動序列化，因為 JsonUtility 不支援 List）
+        /// 切換當前角色類型
+        /// </summary>
+        public void SetCurrentCharacterType(CharacterType type)
+        {
+            _currentCharacterType = type;
+            Logger.Debug($"Switched to {type} profile");
+        }
+
+        /// <summary>
+        /// 保存配置到 JSON（手動序列化，支援玩家和狗）
         /// </summary>
         public string SaveToJson()
         {
             try
             {
                 // 保存前同步 Dictionary 到 List
-                _currentProfile.SyncToList();
+                _playerProfile.SyncToList();
+                _petProfile.SyncToList();
                 
-                Debug.Log($"[EquipmentSkinSystem] SaveToJson - SlotConfigsList count: {_currentProfile.SlotConfigsList?.Count ?? 0}");
-                
-                // 手動構建 JSON（因為 JsonUtility 對 List 支援不佳）
                 var sb = new System.Text.StringBuilder();
                 sb.AppendLine("{");
-                sb.AppendLine($"    \"ConfigVersion\": {_currentProfile.ConfigVersion},");
-                sb.AppendLine($"    \"ProfileName\": \"{_currentProfile.ProfileName}\",");
-                sb.AppendLine("    \"SlotConfigsList\": [");
-                
-                if (_currentProfile.SlotConfigsList != null)
-                {
-                    for (int i = 0; i < _currentProfile.SlotConfigsList.Count; i++)
-                    {
-                        var slot = _currentProfile.SlotConfigsList[i];
-                        sb.AppendLine("        {");
-                        sb.AppendLine($"            \"SlotType\": {(int)slot.SlotType},");
-                        sb.AppendLine($"            \"SkinItemTypeID\": {slot.SkinItemTypeID},");
-                        sb.AppendLine($"            \"UseSkin\": {slot.UseSkin.ToString().ToLower()}");
-                        sb.Append("        }");
-                        if (i < _currentProfile.SlotConfigsList.Count - 1)
-                        {
-                            sb.AppendLine(",");
-                        }
-                        else
-                        {
-                            sb.AppendLine();
-                        }
-                        
-                        Debug.Log($"[EquipmentSkinSystem] SaveToJson - Slot {slot.SlotType}: SkinID={slot.SkinItemTypeID}, UseSkin={slot.UseSkin}");
-                    }
-                }
-                
-                sb.AppendLine("    ]");
+                sb.AppendLine($"    \"CurrentCharacterType\": {(int)_currentCharacterType},");
+                sb.AppendLine("    \"PlayerProfile\": ");
+                sb.Append(SerializeProfile(_playerProfile, "        "));
+                sb.AppendLine(",");
+                sb.AppendLine("    \"PetProfile\": ");
+                sb.Append(SerializeProfile(_petProfile, "        "));
+                sb.AppendLine();
                 sb.Append("}");
                 
                 string json = sb.ToString();
-                Debug.Log($"[EquipmentSkinSystem] SaveToJson - JSON length: {json.Length}");
+                Logger.Debug($"SaveToJson - JSON length: {json.Length}");
                 return json;
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to save profile: {e.Message}");
-                Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
+                Logger.Error("Failed to save profiles", e);
+                Logger.Error($"Stack trace: {e.StackTrace}");
                 return string.Empty;
             }
         }
 
         /// <summary>
-        /// 從 JSON 載入配置（手動解析，因為 JsonUtility 不支援 List）
+        /// 序列化單個角色配置
+        /// </summary>
+        private string SerializeProfile(CharacterSkinProfile profile, string indent)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("{");
+            sb.AppendLine($"{indent}    \"ConfigVersion\": {profile.ConfigVersion},");
+            sb.AppendLine($"{indent}    \"ProfileName\": \"{profile.ProfileName}\",");
+            sb.AppendLine($"{indent}    \"SlotConfigsList\": [");
+            
+            if (profile.SlotConfigsList != null)
+            {
+                for (int i = 0; i < profile.SlotConfigsList.Count; i++)
+                {
+                    var slot = profile.SlotConfigsList[i];
+                    sb.AppendLine($"{indent}        {{");
+                    sb.AppendLine($"{indent}            \"SlotType\": {(int)slot.SlotType},");
+                    sb.AppendLine($"{indent}            \"SkinItemTypeID\": {slot.SkinItemTypeID},");
+                    sb.AppendLine($"{indent}            \"UseSkin\": {slot.UseSkin.ToString().ToLower()}");
+                    sb.Append($"{indent}        }}");
+                    if (i < profile.SlotConfigsList.Count - 1)
+                    {
+                        sb.AppendLine(",");
+                    }
+                    else
+                    {
+                        sb.AppendLine();
+                    }
+                }
+            }
+            
+            sb.AppendLine($"{indent}    ]");
+            sb.Append($"{indent}}}");
+            
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// 從 JSON 載入配置（手動解析，支援玩家和狗）
         /// </summary>
         public void LoadFromJson(string json)
         {
@@ -240,68 +283,94 @@ namespace EquipmentSkinSystem
             {
                 if (!string.IsNullOrEmpty(json))
                 {
-                    // 手動解析 JSON
-                    _currentProfile = ParseJson(json);
-                    
-                    if (_currentProfile == null || _currentProfile.SlotConfigsList == null || _currentProfile.SlotConfigsList.Count == 0)
+                    // 檢查是否為新格式（包含 PlayerProfile 和 PetProfile）
+                    if (json.Contains("\"PlayerProfile\"") && json.Contains("\"PetProfile\""))
                     {
-                        Debug.LogWarning("[EquipmentSkinSystem] Invalid profile, creating new one");
-                        _currentProfile = new CharacterSkinProfile("Default");
+                        // 新格式：分別載入玩家和狗的配置
+                        var charTypeMatch = System.Text.RegularExpressions.Regex.Match(json, @"""CurrentCharacterType"":\s*(\d+)");
+                        if (charTypeMatch.Success)
+                        {
+                            _currentCharacterType = (CharacterType)int.Parse(charTypeMatch.Groups[1].Value);
+                        }
+
+                        var playerMatch = System.Text.RegularExpressions.Regex.Match(json, @"""PlayerProfile"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
+                        if (playerMatch.Success)
+                        {
+                            _playerProfile = ParseJson(playerMatch.Groups[1].Value);
+                            ValidateAndFixProfile(_playerProfile, "Player");
+                        }
+
+                        var petMatch = System.Text.RegularExpressions.Regex.Match(json, @"""PetProfile"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
+                        if (petMatch.Success)
+                        {
+                            _petProfile = ParseJson(petMatch.Groups[1].Value);
+                            ValidateAndFixProfile(_petProfile, "Pet");
+                        }
+
+                        Logger.Debug($"Loaded player and pet profiles, current: {_currentCharacterType}");
                     }
                     else
                     {
-                        // 版本檢查與自動遷移
-                        int currentVersion = 1; // 當前程式碼的版本
-                        if (_currentProfile.ConfigVersion < currentVersion)
-                        {
-                            Debug.LogWarning($"[EquipmentSkinSystem] Config version mismatch: saved={_currentProfile.ConfigVersion}, current={currentVersion}");
-                            Debug.Log("[EquipmentSkinSystem] Migrating config to new version...");
-                            _currentProfile = MigrateConfig(_currentProfile, currentVersion);
-                            Debug.Log("[EquipmentSkinSystem] ✅ Config migration completed");
-                            
-                            // 自動保存遷移後的配置
-                            DataPersistence.SaveConfig();
-                        }
-                        else
-                        {
-                            Debug.Log($"[EquipmentSkinSystem] Config version OK: {_currentProfile.ConfigVersion}");
-                        }
+                        // 舊格式：只有單一配置，視為玩家配置
+                        Logger.Warning("Old config format detected, migrating to new format...");
+                        _playerProfile = ParseJson(json);
+                        ValidateAndFixProfile(_playerProfile, "Player");
+                        _petProfile = new CharacterSkinProfile("Pet");
+                        _currentCharacterType = CharacterType.Player;
                         
-                        // 載入後重建 Dictionary
-                        _currentProfile.RebuildDictionary();
-                        Debug.Log($"[EquipmentSkinSystem] LoadFromJson - Loaded {_currentProfile.SlotConfigsList.Count} slots");
-                        
-                        // 驗證所有槽位都存在，如果缺少就補齊（保留原有設定）
-                        bool needsUpdate = false;
-                        foreach (EquipmentSlotType slotType in Enum.GetValues(typeof(EquipmentSlotType)))
-                        {
-                            if (!_currentProfile.SlotConfigs.ContainsKey(slotType))
-                            {
-                                Debug.LogWarning($"[EquipmentSkinSystem] Missing slot {slotType}, adding with default settings...");
-                                _currentProfile.SlotConfigsList.Add(new SlotSkinConfig(slotType));
-                                needsUpdate = true;
-                            }
-                        }
-                        
-                        if (needsUpdate)
-                        {
-                            _currentProfile.RebuildDictionary();
-                            // 自動保存補齊後的配置
-                            DataPersistence.SaveConfig();
-                            Debug.Log("[EquipmentSkinSystem] ✅ Config updated with missing slots");
-                        }
+                        // 自動保存為新格式
+                        DataPersistence.SaveConfig();
+                        Logger.Info("Config migrated to new format");
                     }
                 }
                 else
                 {
-                    _currentProfile = new CharacterSkinProfile("Default");
+                    _playerProfile = new CharacterSkinProfile("Player");
+                    _petProfile = new CharacterSkinProfile("Pet");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to load profile: {e.Message}");
-                Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
-                _currentProfile = new CharacterSkinProfile("Default");
+                Logger.Error("Failed to load profiles", e);
+                Logger.Error($"Stack trace: {e.StackTrace}");
+                _playerProfile = new CharacterSkinProfile("Player");
+                _petProfile = new CharacterSkinProfile("Pet");
+            }
+        }
+
+        /// <summary>
+        /// 驗證並修正配置
+        /// </summary>
+        private void ValidateAndFixProfile(CharacterSkinProfile profile, string name)
+        {
+            if (profile == null || profile.SlotConfigsList == null || profile.SlotConfigsList.Count == 0)
+            {
+                Logger.Warning($"Invalid {name} profile, creating new one");
+                profile = new CharacterSkinProfile(name);
+                return;
+            }
+
+            // 載入後重建 Dictionary
+            profile.RebuildDictionary();
+            Logger.Debug($"Loaded {name} profile with {profile.SlotConfigsList.Count} slots");
+            
+            // 驗證所有槽位都存在
+            bool needsUpdate = false;
+            foreach (EquipmentSlotType slotType in Enum.GetValues(typeof(EquipmentSlotType)))
+            {
+                if (!profile.SlotConfigs.ContainsKey(slotType))
+                {
+                    Logger.Warning($"{name} profile missing slot {slotType}, adding...");
+                    profile.SlotConfigsList.Add(new SlotSkinConfig(slotType));
+                    needsUpdate = true;
+                }
+            }
+            
+            if (needsUpdate)
+            {
+                profile.RebuildDictionary();
+                DataPersistence.SaveConfig();
+                Logger.Info($"{name} profile updated with missing slots");
             }
         }
         
@@ -354,12 +423,12 @@ namespace EquipmentSkinSystem
                         }
                     }
                     
-                    Debug.Log($"[EquipmentSkinSystem] ParseJson - Parsed {profile.SlotConfigsList.Count} slots");
+                    Logger.Debug($"ParseJson - Parsed {profile.SlotConfigsList.Count} slots");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to parse JSON: {e.Message}");
+                Logger.Error("Failed to parse JSON", e);
             }
             
             return profile;
@@ -388,12 +457,12 @@ namespace EquipmentSkinSystem
                         {
                             newSlot.SkinItemTypeID = oldSlot.SkinItemTypeID;
                             newSlot.UseSkin = oldSlot.UseSkin;
-                            Debug.Log($"[EquipmentSkinSystem] Migrated {oldSlot.SlotType}: SkinID={oldSlot.SkinItemTypeID}, UseSkin={oldSlot.UseSkin}");
+                            Logger.Debug($"Migrated {oldSlot.SlotType}: SkinID={oldSlot.SkinItemTypeID}, UseSkin={oldSlot.UseSkin}");
                         }
                     }
                     else
                     {
-                        Debug.LogWarning($"[EquipmentSkinSystem] Slot type {oldSlot.SlotType} no longer exists in new version, skipping...");
+                        Logger.Warning($"Slot type {oldSlot.SlotType} no longer exists in new version, skipping...");
                     }
                 }
             }
@@ -402,12 +471,19 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
-        /// 重置所有配置
+        /// 重置當前角色的配置
         /// </summary>
         public void ResetProfile()
         {
-            _currentProfile = new CharacterSkinProfile("Default");
+            if (_currentCharacterType == CharacterType.Player)
+            {
+                _playerProfile = new CharacterSkinProfile("Player");
+            }
+            else
+            {
+                _petProfile = new CharacterSkinProfile("Pet");
+            }
+            Logger.Debug($"Reset {_currentCharacterType} profile");
         }
     }
 }
-

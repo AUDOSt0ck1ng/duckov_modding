@@ -20,7 +20,7 @@ namespace EquipmentSkinSystem
                 if (!Directory.Exists(path))
                 {
                     Directory.CreateDirectory(path);
-                    Debug.Log($"[EquipmentSkinSystem] Created directory: {path}");
+                    Logger.Debug($"Created directory: {path}");
                 }
                 return path;
             }
@@ -35,32 +35,32 @@ namespace EquipmentSkinSystem
         {
             try
             {
-                Debug.Log($"[EquipmentSkinSystem] SaveConfig called");
-                Debug.Log($"[EquipmentSkinSystem] Save directory: {SaveDirectory}");
-                Debug.Log($"[EquipmentSkinSystem] Save file path: {SaveFilePath}");
+                Logger.Debug("SaveConfig called");
+                Logger.Debug($"Save directory: {SaveDirectory}");
+                Logger.Debug($"Save file path: {SaveFilePath}");
                 
                 string json = EquipmentSkinDataManager.Instance.SaveToJson();
-                Debug.Log($"[EquipmentSkinSystem] JSON length: {json?.Length ?? 0}");
-                Debug.Log($"[EquipmentSkinSystem] JSON content: {json}");
+                Logger.Debug($"JSON length: {json?.Length ?? 0}");
+                Logger.Debug($"JSON content: {json}");
                 
                 File.WriteAllText(SaveFilePath, json);
-                Debug.Log($"[EquipmentSkinSystem] ✅ Configuration saved to: {SaveFilePath}");
+                Logger.Info($"Configuration saved to: {SaveFilePath}");
                 
                 // 驗證文件是否真的存在
                 if (File.Exists(SaveFilePath))
                 {
                     string verifyJson = File.ReadAllText(SaveFilePath);
-                    Debug.Log($"[EquipmentSkinSystem] ✅ Verified file exists, size: {verifyJson.Length}");
+                    Logger.Info($"Verified file exists, size: {verifyJson.Length}");
                 }
                 else
                 {
-                    Debug.LogError($"[EquipmentSkinSystem] ❌ File does not exist after save!");
+                    Logger.Error("❌ File does not exist after save!");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to save configuration: {e.Message}");
-                Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
+                Logger.Error("Failed to save configuration", e);
+                Logger.Error($"Stack trace: {e.StackTrace}");
             }
         }
 
@@ -72,28 +72,28 @@ namespace EquipmentSkinSystem
             try
             {
                 string filePath = SaveFilePath.Replace('\\', '/');
-                Debug.Log($"[EquipmentSkinSystem] LoadConfig called");
-                Debug.Log($"[EquipmentSkinSystem] Looking for file: {filePath}");
+                Logger.Debug("LoadConfig called");
+                Logger.Debug($"Looking for file: {filePath}");
                 
                 if (File.Exists(SaveFilePath))
                 {
                     string json = File.ReadAllText(SaveFilePath);
-                    Debug.Log($"[EquipmentSkinSystem] Loaded JSON length: {json.Length}");
-                    Debug.Log($"[EquipmentSkinSystem] Loaded JSON content: {json}");
+                    Logger.Debug($"Loaded JSON length: {json.Length}");
+                    Logger.Debug($"Loaded JSON content: {json}");
                     
                     EquipmentSkinDataManager.Instance.LoadFromJson(json);
-                    Debug.Log($"[EquipmentSkinSystem] ✅ Configuration loaded from: {filePath}");
+                    Logger.Info($"Configuration loaded from: {filePath}");
                 }
                 else
                 {
-                    Debug.Log($"[EquipmentSkinSystem] ❌ No saved configuration found at: {filePath}");
-                    Debug.Log("[EquipmentSkinSystem] Using default configuration.");
+                    Logger.Error($"No saved configuration found at: {filePath}");
+                    Logger.Debug("Using default configuration.");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to load configuration: {e.Message}");
-                Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
+                Logger.Error("Failed to load configuration", e);
+                Logger.Error($"Stack trace: {e.StackTrace}");
             }
         }
 
@@ -107,12 +107,12 @@ namespace EquipmentSkinSystem
                 if (File.Exists(SaveFilePath))
                 {
                     File.Delete(SaveFilePath);
-                    Debug.Log("[EquipmentSkinSystem] Configuration deleted.");
+                    Logger.Debug("Configuration deleted.");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to delete configuration: {e.Message}");
+                Logger.Error("Failed to delete configuration", e);
             }
         }
 
@@ -125,4 +125,3 @@ namespace EquipmentSkinSystem
         }
     }
 }
-

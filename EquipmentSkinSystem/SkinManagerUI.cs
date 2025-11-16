@@ -21,6 +21,8 @@ namespace EquipmentSkinSystem
         private Sprite? _roundedSprite;
         private Sprite? _roundedButtonSprite;
         private Sprite? _roundedSlotSprite;
+        private Button? _playerButton;
+        private Button? _petButton;
 
         private class SlotUIElements
         {
@@ -69,13 +71,16 @@ namespace EquipmentSkinSystem
                 // 確保有 EventSystem（UI 互動必需）
                 EnsureEventSystem();
                 
-                Debug.Log("[EquipmentSkinSystem] Canvas created with GraphicRaycaster");
+                Logger.Debug("Canvas created with GraphicRaycaster");
 
                 // 創建背景面板
                 GameObject backgroundPanel = CreateBackgroundPanel(_uiPanel.transform);
 
                 // 創建標題
                 CreateTitle(backgroundPanel.transform);
+
+                // 創建角色切換按鈕
+                CreateCharacterToggle(backgroundPanel.transform);
 
                 // 創建槽位列表
                 CreateSlotList(backgroundPanel.transform);
@@ -85,11 +90,11 @@ namespace EquipmentSkinSystem
 
                 _uiPanel.SetActive(false);
 
-                Debug.Log("[EquipmentSkinSystem] UI created successfully");
+                Logger.Debug("UI created successfully");
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to create UI: {e.Message}");
+                Logger.Error("Failed to create UI", e);
             }
         }
 
@@ -101,7 +106,7 @@ namespace EquipmentSkinSystem
             RectTransform rect = panel.AddComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(620, 560); // 縮小寬度，增加高度
+            rect.sizeDelta = new Vector2(620, 660); // 調整高度（720 - 60）
             rect.anchoredPosition = Vector2.zero;
 
             // 使用圓角 Sprite
@@ -140,6 +145,171 @@ namespace EquipmentSkinSystem
             textShadow.effectDistance = new Vector2(2, -2);
         }
 
+        private void CreateCharacterToggle(Transform parent)
+        {
+            GameObject toggleContainer = new GameObject("CharacterToggle");
+            toggleContainer.transform.SetParent(parent, false);
+
+            RectTransform rect = toggleContainer.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(300, 50);
+            rect.anchoredPosition = new Vector2(0, -100);
+            rect.pivot = new Vector2(0.5f, 0.5f); // 容器居中
+
+            // 玩家按鈕（左側，相對於容器中心）
+            _playerButton = CreateCharacterButton(toggleContainer.transform, "玩家", CharacterType.Player);
+            RectTransform playerRect = _playerButton.GetComponent<RectTransform>();
+            playerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            playerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            playerRect.pivot = new Vector2(0.5f, 0.5f);
+            playerRect.anchoredPosition = new Vector2(-75, 0); // 左側：-75 = -(140/2 + 10/2)
+            
+            // 狗按鈕（右側，相對於容器中心）
+            _petButton = CreateCharacterButton(toggleContainer.transform, "狗", CharacterType.Pet);
+            RectTransform petRect = _petButton.GetComponent<RectTransform>();
+            petRect.anchorMin = new Vector2(0.5f, 0.5f);
+            petRect.anchorMax = new Vector2(0.5f, 0.5f);
+            petRect.pivot = new Vector2(0.5f, 0.5f);
+            petRect.anchoredPosition = new Vector2(75, 0); // 右側：75 = 140/2 + 10/2
+        }
+
+        private Button CreateCharacterButton(Transform parent, string label, CharacterType characterType)
+        {
+            GameObject buttonObj = new GameObject($"{label}Button");
+            buttonObj.transform.SetParent(parent, false);
+
+            RectTransform rect = buttonObj.AddComponent<RectTransform>();
+            // anchor 和 pivot 會在 CreateCharacterToggle 中設置
+            rect.sizeDelta = new Vector2(140, 50); // 增加高度從 45 到 50
+
+            Image image = buttonObj.AddComponent<Image>();
+            if (_roundedButtonSprite != null)
+            {
+                image.sprite = _roundedButtonSprite;
+                image.type = Image.Type.Sliced;
+            }
+            image.color = Color.white;
+            image.raycastTarget = true; // 確保可以接收點擊
+
+            Button button = buttonObj.AddComponent<Button>();
+            
+            // 根據當前選中狀態設置顏色
+            bool isSelected = EquipmentSkinDataManager.Instance.CurrentCharacterType == characterType;
+            ColorBlock colors = button.colors;
+            colors.normalColor = isSelected 
+                ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+                : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
+            colors.highlightedColor = new Color(157f/255f, 220f/255f, 235f/255f, 1f);
+            colors.pressedColor = new Color(3f/255f, 159f/255f, 196f/255f, 1f);
+            colors.selectedColor = colors.normalColor;
+            colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+            button.colors = colors;
+
+            button.onClick.AddListener(() => OnCharacterTypeChanged(characterType));
+
+            // 文字
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(buttonObj.transform, false);
+
+            TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = label;
+            text.fontSize = 20;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = Color.white;
+            text.fontStyle = FontStyles.Bold;
+            text.raycastTarget = false; // 文字不阻擋點擊
+
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+
+            return button;
+        }
+
+        private void OnCharacterTypeChanged(CharacterType newType)
+        {
+            try
+            {
+                Logger.Debug($"Character type changed to: {newType}");
+                
+                // 切換角色類型
+                EquipmentSkinDataManager.Instance.SetCurrentCharacterType(newType);
+                
+                // 更新按鈕顏色狀態
+                UpdateCharacterButtonColors();
+                
+                // 重新載入 UI（顯示新角色的配置）
+                RefreshUIForCurrentCharacter();
+                
+                // 立即更新當前裝備 ID 顯示
+                UpdateCurrentEquipmentDisplay();
+                
+                // 刷新裝備渲染
+                RefreshAllEquipment();
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Error changing character type", e);
+            }
+        }
+
+        private void UpdateCharacterButtonColors()
+        {
+            var currentType = EquipmentSkinDataManager.Instance.CurrentCharacterType;
+            
+            // 更新玩家按鈕
+            if (_playerButton != null)
+            {
+                var colors = _playerButton.colors;
+                colors.normalColor = currentType == CharacterType.Player
+                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+                    : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
+                colors.selectedColor = colors.normalColor;
+                _playerButton.colors = colors;
+            }
+            
+            // 更新狗按鈕
+            if (_petButton != null)
+            {
+                var colors = _petButton.colors;
+                colors.normalColor = currentType == CharacterType.Pet
+                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+                    : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
+                colors.selectedColor = colors.normalColor;
+                _petButton.colors = colors;
+            }
+        }
+
+        private void RefreshUIForCurrentCharacter()
+        {
+            // 重新載入當前角色的配置到 UI
+            var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
+            
+            foreach (var kvp in _slotUIElements)
+            {
+                var slotType = kvp.Key;
+                var elements = kvp.Value;
+                
+                if (profile.SlotConfigs.TryGetValue(slotType, out var config))
+                {
+                    // 顯示 ID：0 = 空欄（顯示 placeholder "外觀ID"），-1 或正數 = 顯示數字
+                    if (config.SkinItemTypeID == 0)
+                    {
+                        elements.SkinItemInput.text = ""; // 空字符串會讓 placeholder "外觀ID" 顯示
+                    }
+                    else
+                    {
+                        elements.SkinItemInput.text = config.SkinItemTypeID.ToString();
+                    }
+                    elements.UseSkinToggle.isOn = config.UseSkin;
+                }
+            }
+            
+            Logger.Debug($"UI refreshed for {EquipmentSkinDataManager.Instance.CurrentCharacterType}");
+        }
+
         private void CreateSlotList(Transform parent)
         {
             GameObject scrollViewObj = new GameObject("SlotScrollView");
@@ -149,7 +319,7 @@ namespace EquipmentSkinSystem
             scrollRect.anchorMin = new Vector2(0.5f, 0f);
             scrollRect.anchorMax = new Vector2(0.5f, 1f);
             scrollRect.offsetMin = new Vector2(-290, 110); // 左下角：縮小寬度
-            scrollRect.offsetMax = new Vector2(290, -80);   // 右上角：縮小寬度
+            scrollRect.offsetMax = new Vector2(290, -160);  // 右上角：為角色切換按鈕留出更多空間（按鈕在 -100，高度 50，所以需要 -160）
 
             Image scrollBg = scrollViewObj.AddComponent<Image>();
             if (_roundedSlotSprite != null)
@@ -434,7 +604,7 @@ namespace EquipmentSkinSystem
             button.targetGraphic = image;
             button.interactable = true;
             button.onClick.AddListener(() => {
-                Debug.Log($"[EquipmentSkinSystem] Button '{text}' clicked!");
+                Logger.Debug($"Button '{text}' clicked!");
                 onClick?.Invoke();
             });
 
@@ -535,10 +705,22 @@ namespace EquipmentSkinSystem
         {
             try
             {
-                var mainCharacter = LevelManager.Instance?.MainCharacter;
-                if (mainCharacter == null) return;
+                // 根據當前選中的角色類型獲取對應的角色
+                CharacterMainControl? targetCharacter = null;
+                var currentType = EquipmentSkinDataManager.Instance.CurrentCharacterType;
+                
+                if (currentType == CharacterType.Player)
+                {
+                    targetCharacter = LevelManager.Instance?.MainCharacter;
+                }
+                else if (currentType == CharacterType.Pet)
+                {
+                    targetCharacter = LevelManager.Instance?.PetCharacter;
+                }
 
-                var equipmentController = mainCharacter.GetComponent<CharacterEquipmentController>();
+                if (targetCharacter == null) return;
+
+                var equipmentController = targetCharacter.GetComponent<CharacterEquipmentController>();
                 if (equipmentController == null) return;
 
                 // 遊戲使用獨立欄位而非字典，逐個取得
@@ -560,7 +742,7 @@ namespace EquipmentSkinSystem
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Error updating current equipment display: {ex.Message}");
+                Logger.Error("Error updating current equipment display", ex);
             }
         }
 
@@ -609,18 +791,18 @@ namespace EquipmentSkinSystem
                 _uiPanel.SetActive(true);
                 
                 // 確保載入最新配置
-                Debug.Log("[EquipmentSkinSystem] ShowUI - Loading config...");
+                Logger.Debug("ShowUI - Loading config...");
                 DataPersistence.LoadConfig();
                 
                 // 顯示當前配置狀態
                 var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
-                Debug.Log($"[EquipmentSkinSystem] ShowUI - Current profile: {profile?.ProfileName}");
-                Debug.Log($"[EquipmentSkinSystem] ShowUI - SlotConfigs count: {profile?.SlotConfigs?.Count ?? 0}");
+                Logger.Debug($"ShowUI - Current profile: {profile?.ProfileName}");
+                Logger.Debug($"ShowUI - SlotConfigs count: {profile?.SlotConfigs?.Count ?? 0}");
                 if (profile?.SlotConfigs != null)
                 {
                     foreach (var kvp in profile.SlotConfigs)
                     {
-                        Debug.Log($"[EquipmentSkinSystem] ShowUI - {kvp.Key}: SkinID={kvp.Value.SkinItemTypeID}, UseSkin={kvp.Value.UseSkin}");
+                        Logger.Debug($"ShowUI - {kvp.Key}: SkinID={kvp.Value.SkinItemTypeID}, UseSkin={kvp.Value.UseSkin}");
                     }
                 }
                 
@@ -629,7 +811,7 @@ namespace EquipmentSkinSystem
                 // 使用遊戲的輸入管理系統（和物品欄一樣的方式）
                 InputManager.DisableInput(_uiPanel);
                 
-                Debug.Log("[EquipmentSkinSystem] UI opened - Input disabled via InputManager");
+                Logger.Debug("UI opened - Input disabled via InputManager");
             }
         }
 
@@ -643,7 +825,7 @@ namespace EquipmentSkinSystem
                 // 恢復輸入
                 InputManager.ActiveInput(_uiPanel);
                 
-                Debug.Log("[EquipmentSkinSystem] UI closed - Input restored");
+                Logger.Debug("UI closed - Input restored");
             }
         }
 
@@ -654,7 +836,7 @@ namespace EquipmentSkinSystem
                 var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
                 if (profile == null || profile.SlotConfigs == null)
                 {
-                    Debug.LogError("[EquipmentSkinSystem] Profile or SlotConfigs is null!");
+                    Logger.Error("Profile or SlotConfigs is null!");
                     return;
                 }
 
@@ -665,7 +847,7 @@ namespace EquipmentSkinSystem
                     
                     if (!profile.SlotConfigs.ContainsKey(slotType))
                     {
-                        Debug.LogWarning($"[EquipmentSkinSystem] SlotType {slotType} not found in profile!");
+                        Logger.Warning($"SlotType {slotType} not found in profile!");
                         continue;
                     }
                     
@@ -682,13 +864,13 @@ namespace EquipmentSkinSystem
                     }
                     elements.UseSkinToggle.isOn = config.UseSkin;
                     
-                    Debug.Log($"[EquipmentSkinSystem] RefreshUI - Slot {slotType}: SkinID={config.SkinItemTypeID}, UseSkin={config.UseSkin}");
+                    Logger.Debug($"RefreshUI - Slot {slotType}: SkinID={config.SkinItemTypeID}, UseSkin={config.UseSkin}");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Error in RefreshUI: {e.Message}");
-                Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
+                Logger.Error("Error in RefreshUI", e);
+                Logger.Error($"Stack trace: {e.StackTrace}");
             }
         }
 
@@ -700,20 +882,20 @@ namespace EquipmentSkinSystem
                 if (profile != null && profile.SlotConfigs != null && profile.SlotConfigs.ContainsKey(slotType))
                 {
                     profile.SlotConfigs[slotType].UseSkin = value;
-                    Debug.Log($"[EquipmentSkinSystem] ✅ Slot {slotType} UseSkin changed to: {value}");
-                    Debug.Log($"[EquipmentSkinSystem] Current config: SkinID={profile.SlotConfigs[slotType].SkinItemTypeID}");
+                    Logger.Info($"Slot {slotType} UseSkin changed to: {value}");
+                    Logger.Debug($"Current config: SkinID={profile.SlotConfigs[slotType].SkinItemTypeID}");
                     
                     // 立即應用變更（觸發全身重新渲染）
                     RefreshAllEquipment();
                 }
                 else
                 {
-                    Debug.LogError($"[EquipmentSkinSystem] Cannot toggle slot {slotType} - profile or config is null");
+                    Logger.Error($"Cannot toggle slot {slotType} - profile or config is null");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Error in OnToggleChanged: {e.Message}");
+                Logger.Error("Error in OnToggleChanged", e);
             }
         }
 
@@ -725,7 +907,7 @@ namespace EquipmentSkinSystem
                 var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
                 if (profile == null || profile.SlotConfigs == null || !profile.SlotConfigs.ContainsKey(slotType))
                 {
-                    Debug.LogError($"[EquipmentSkinSystem] Cannot set skin item for slot {slotType}");
+                    Logger.Error($"Cannot set skin item for slot {slotType}");
                     return;
                 }
 
@@ -733,7 +915,7 @@ namespace EquipmentSkinSystem
                 {
                     // 空欄 = 不套用任何外觀（保持原樣）
                     profile.SlotConfigs[slotType].SkinItemTypeID = 0;
-                    Debug.Log($"[EquipmentSkinSystem] Slot {slotType} skin cleared (will use original visual)");
+                    Logger.Debug($"Slot {slotType} skin cleared (will use original visual)");
                     
                     // 如果已啟用，立即應用變更（全身重新渲染）
                     if (profile.SlotConfigs[slotType].UseSkin)
@@ -744,7 +926,7 @@ namespace EquipmentSkinSystem
                 else if (int.TryParse(value, out int itemID))
                 {
                     profile.SlotConfigs[slotType].SkinItemTypeID = itemID;
-                    Debug.Log($"[EquipmentSkinSystem] Slot {slotType} skin item set to: {itemID} (including -1 for hide)");
+                    Logger.Debug($"Slot {slotType} skin item set to: {itemID} (including -1 for hide)");
                     
                     // 如果已啟用，立即應用變更（全身重新渲染）
                     if (profile.SlotConfigs[slotType].UseSkin)
@@ -755,7 +937,7 @@ namespace EquipmentSkinSystem
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Error in OnSkinItemChanged: {e.Message}");
+                Logger.Error("Error in OnSkinItemChanged", e);
             }
         }
 
@@ -794,7 +976,7 @@ namespace EquipmentSkinSystem
 
                 if (player == null)
                 {
-                    Debug.LogWarning("[EquipmentSkinSystem] Cannot find player CharacterMainControl");
+                    Logger.Warning("Cannot find player CharacterMainControl");
                     return;
                 }
 
@@ -804,7 +986,7 @@ namespace EquipmentSkinSystem
                                             .GetValue<object>();
                 if (characterItem == null)
                 {
-                    Debug.LogWarning("[EquipmentSkinSystem] Cannot find characterItem field on player");
+                    Logger.Warning("Cannot find characterItem field on player");
                     return;
                 }
 
@@ -813,7 +995,7 @@ namespace EquipmentSkinSystem
                 var slots = Traverse.Create(characterItem).Property("Slots").GetValue();
                 if (slots == null)
                 {
-                    Debug.LogWarning("[EquipmentSkinSystem] Slots is null");
+                    Logger.Warning("Slots is null");
                     return;
                 }
 
@@ -821,7 +1003,7 @@ namespace EquipmentSkinSystem
                 string? slotKey = GetSlotKeyFromType(slotType);
                 if (string.IsNullOrEmpty(slotKey))
                 {
-                    Debug.LogWarning($"[EquipmentSkinSystem] Unknown slot type: {slotType}");
+                    Logger.Warning($"Unknown slot type: {slotType}");
                     return;
                 }
 
@@ -829,14 +1011,14 @@ namespace EquipmentSkinSystem
                 var slotTraverse = Traverse.Create(slots).Method("GetSlot", new object[] { slotHash });
                 if (slotTraverse == null)
                 {
-                    Debug.LogWarning("[EquipmentSkinSystem] Cannot find GetSlot(int) method on Slots");
+                    Logger.Warning("Cannot find GetSlot(int) method on Slots");
                     return;
                 }
 
                 var slot = slotTraverse.GetValue();
                 if (slot == null)
                 {
-                    Debug.LogWarning($"[EquipmentSkinSystem] Cannot find slot: {slotKey}");
+                    Logger.Warning($"Cannot find slot: {slotKey}");
                     return;
                 }
 
@@ -845,13 +1027,13 @@ namespace EquipmentSkinSystem
                 if (forceInvokeMethod != null)
                 {
                     forceInvokeMethod.Invoke(slot, null);
-                    Debug.Log($"[EquipmentSkinSystem] ✅ Refreshed visual for slot: {slotType}");
+                    Logger.Info($"Refreshed visual for slot: {slotType}");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Error refreshing equipment visual: {e.Message}");
-                Debug.LogError($"[EquipmentSkinSystem] Stack trace: {e.StackTrace}");
+                Logger.Error("Error refreshing equipment visual", e);
+                Logger.Error($"Stack trace: {e.StackTrace}");
             }
         }
 
@@ -879,23 +1061,23 @@ namespace EquipmentSkinSystem
 
         private void OnSaveClicked()
         {
-            Debug.Log("[EquipmentSkinSystem] Save button clicked!");
+            Logger.Debug("Save button clicked!");
             
             // 先保存配置到文件
             try
             {
                 DataPersistence.SaveConfig();
-                Debug.Log("[EquipmentSkinSystem] ✅ Configuration saved to file!");
+                Logger.Info("Configuration saved to file!");
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EquipmentSkinSystem] Failed to save config: {e.Message}");
+                Logger.Error("Failed to save config", e);
             }
             
             // 立即應用所有槽位的設定（全身重新渲染）
             RefreshAllEquipment();
             
-            Debug.Log("[EquipmentSkinSystem] ✅ Configuration applied!");
+            Logger.Info("Configuration applied!");
             
             // 保存後自動關閉介面
             HideUI();
@@ -903,7 +1085,7 @@ namespace EquipmentSkinSystem
 
         private void OnClearSlotClicked(EquipmentSlotType slotType)
         {
-            Debug.Log($"[EquipmentSkinSystem] Clear slot: {slotType}");
+            Logger.Debug($"Clear slot: {slotType}");
             
             var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
             if (profile != null && profile.SlotConfigs != null && profile.SlotConfigs.ContainsKey(slotType))
@@ -918,21 +1100,21 @@ namespace EquipmentSkinSystem
                 // 立即應用變更（全身重新渲染）
                 RefreshAllEquipment();
                 
-                Debug.Log($"[EquipmentSkinSystem] ✅ Slot {slotType} cleared!");
+                Logger.Info($"Slot {slotType} cleared!");
             }
         }
 
         private void OnResetClicked()
         {
-            Debug.Log("[EquipmentSkinSystem] Reset button clicked!");
+            Logger.Debug("Reset button clicked!");
             EquipmentSkinDataManager.Instance.ResetProfile();
             RefreshUI();
-            Debug.Log("[EquipmentSkinSystem] ✅ Configuration reset!");
+            Logger.Info("Configuration reset!");
         }
 
         private void OnCloseClicked()
         {
-            Debug.Log("[EquipmentSkinSystem] Close button clicked!");
+            Logger.Debug("Close button clicked!");
             HideUI();
         }
 
@@ -945,11 +1127,11 @@ namespace EquipmentSkinSystem
                 DontDestroyOnLoad(eventSystemObj);
                 eventSystemObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 eventSystemObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-                Debug.Log("[EquipmentSkinSystem] Created EventSystem for UI interaction");
+                Logger.Debug("Created EventSystem for UI interaction");
             }
             else
             {
-                Debug.Log("[EquipmentSkinSystem] EventSystem already exists");
+                Logger.Debug("EventSystem already exists");
             }
         }
 
@@ -1089,4 +1271,3 @@ namespace EquipmentSkinSystem
         }
     }
 }
-
