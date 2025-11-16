@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+# 開發須知 / Prompt for Future Work
+
+以下規範請在每次進行開發或維護本模組時優先確認，避免重複踩雷：
+
+1. **Harmony 補丁**
+   - 優先使用 Harmony 官方推薦的 `Harmony.CreateAndPatchAll(assembly)` 或 `CreateClassProcessor` 時必須確認目標 CLR 版本支援。
+   - 在 Unity 環境中，避免直接引用 `System.Reflection.MethodInfo`、`Assembly.GetExecutingAssembly()` 等可能被移除的 API。若必須使用，請先透過簡單範例測試是否可在遊戲帶的 Mono 版上執行。
+   - 補丁掛載後務必記錄日誌，至少包含成功訊息與被 patch 的方法列表。
+
+2. **設定載入／持久化**
+   - 任何資料結構（例如 `SlotConfigsList`）一律以 **手動序列化／反序列化** 實作，避免依賴 Unity `JsonUtility` 在 `Dictionary`、`List` 方面的限制。
+   - 載入時一定要檢查資料筆數與欄位正確性，必要時重建字典並寫回檔案。
+
+3. **功能調整流程**
+   - 實作前先調查官方或既有實作是否已有推薦做法，禁止「為了省時間」自行嘗試未驗證的 API。
+   - 每次變更需完成：編譯、覆蓋 DLL、啟動遊戲驗證（含載入設定與實際穿脫裝備測試）、收集日誌。
+
+4. **日誌與除錯**
+   - 關鍵流程（載入設定、保存設定、Harmony patch、即時渲染）必須寫出清楚日誌並附 Slot/ID 等資訊，方便快速對照是否有進度。
+
+請將以上內容視為「內建 prompt」，任何新指示都需要符合此規範後再執行。若遇到新坑，務必更新本文件。記得：**寧可多花 5 分鐘查文件，也不要亂試造成整體功能倒退。**
+
