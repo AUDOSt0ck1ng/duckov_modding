@@ -620,8 +620,8 @@ namespace EquipmentSkinSystem
                     Debug.Log($"[EquipmentSkinSystem] ✅ Slot {slotType} UseSkin changed to: {value}");
                     Debug.Log($"[EquipmentSkinSystem] Current config: SkinID={profile.SlotConfigs[slotType].SkinItemTypeID}");
                     
-                    // 立即應用變更（觸發裝備重新渲染）
-                    RefreshEquipmentVisual(slotType);
+                    // 立即應用變更（觸發全身重新渲染）
+                    RefreshAllEquipment();
                 }
                 else
                 {
@@ -652,10 +652,10 @@ namespace EquipmentSkinSystem
                     profile.SlotConfigs[slotType].SkinItemTypeID = 0;
                     Debug.Log($"[EquipmentSkinSystem] Slot {slotType} skin cleared (will use original visual)");
                     
-                    // 如果已啟用，立即應用變更
+                    // 如果已啟用，立即應用變更（全身重新渲染）
                     if (profile.SlotConfigs[slotType].UseSkin)
                     {
-                        RefreshEquipmentVisual(slotType);
+                        RefreshAllEquipment();
                     }
                 }
                 else if (int.TryParse(value, out int itemID))
@@ -663,10 +663,10 @@ namespace EquipmentSkinSystem
                     profile.SlotConfigs[slotType].SkinItemTypeID = itemID;
                     Debug.Log($"[EquipmentSkinSystem] Slot {slotType} skin item set to: {itemID} (including -1 for hide)");
                     
-                    // 如果已啟用，立即應用變更
+                    // 如果已啟用，立即應用變更（全身重新渲染）
                     if (profile.SlotConfigs[slotType].UseSkin)
                     {
-                        RefreshEquipmentVisual(slotType);
+                        RefreshAllEquipment();
                     }
                 }
             }
@@ -676,6 +676,14 @@ namespace EquipmentSkinSystem
             }
         }
 
+
+        /// <summary>
+        /// 立即刷新所有裝備視覺（觸發全身重新渲染）
+        /// </summary>
+        private void RefreshAllEquipment()
+        {
+            HarmonyPatches.ForceRefreshAllEquipment();
+        }
 
         /// <summary>
         /// 立即刷新裝備視覺（觸發重新渲染）
@@ -801,11 +809,8 @@ namespace EquipmentSkinSystem
                 Debug.LogError($"[EquipmentSkinSystem] Failed to save config: {e.Message}");
             }
             
-            // 立即應用所有槽位的設定
-            foreach (EquipmentSlotType slotType in Enum.GetValues(typeof(EquipmentSlotType)))
-            {
-                RefreshEquipmentVisual(slotType);
-            }
+            // 立即應用所有槽位的設定（全身重新渲染）
+            RefreshAllEquipment();
             
             Debug.Log("[EquipmentSkinSystem] ✅ Configuration applied!");
             
@@ -827,8 +832,8 @@ namespace EquipmentSkinSystem
                 // 刷新 UI
                 RefreshUI();
                 
-                // 立即應用變更
-                RefreshEquipmentVisual(slotType);
+                // 立即應用變更（全身重新渲染）
+                RefreshAllEquipment();
                 
                 Debug.Log($"[EquipmentSkinSystem] ✅ Slot {slotType} cleared!");
             }
