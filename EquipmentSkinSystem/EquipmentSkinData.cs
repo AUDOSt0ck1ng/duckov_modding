@@ -90,7 +90,7 @@ namespace EquipmentSkinSystem
             
             RebuildDictionary();
             
-            Logger.Debug($"CharacterSkinProfile created with {SlotConfigsList.Count} slots");
+            // 注意：不在構造函數中使用 Logger，避免初始化順序問題
         }
         
         /// <summary>
@@ -159,6 +159,27 @@ namespace EquipmentSkinSystem
     }
 
     /// <summary>
+    /// 應用程式設定（Log 設定、語系等）
+    /// </summary>
+    [Serializable]
+    public class AppSettings
+    {
+        // Log 設定
+        public bool EnableDebugLog = false;
+        public bool EnableInfoLog = true;
+        public bool EnableWarningLog = true;
+        public bool EnableErrorLog = true;
+        
+        // 語系設定（未來擴展用）
+        public string Language = "zh-TW";  // 預設繁體中文
+
+        public AppSettings()
+        {
+            // 預設值已在欄位初始化中設定
+        }
+    }
+
+    /// <summary>
     /// 全局裝備外觀數據管理器
     /// </summary>
     public class EquipmentSkinDataManager
@@ -179,10 +200,12 @@ namespace EquipmentSkinSystem
         private CharacterSkinProfile _playerProfile;
         private CharacterSkinProfile _petProfile;
         private CharacterType _currentCharacterType = CharacterType.Player;
+        private AppSettings _appSettings;
 
         public CharacterSkinProfile PlayerProfile => _playerProfile;
         public CharacterSkinProfile PetProfile => _petProfile;
         public CharacterType CurrentCharacterType => _currentCharacterType;
+        public AppSettings AppSettings => _appSettings;
         
         // 當前選中的角色配置
         public CharacterSkinProfile CurrentProfile => _currentCharacterType == CharacterType.Player ? _playerProfile : _petProfile;
@@ -191,6 +214,7 @@ namespace EquipmentSkinSystem
         {
             _playerProfile = new CharacterSkinProfile("Player");
             _petProfile = new CharacterSkinProfile("Pet");
+            _appSettings = new AppSettings();
         }
 
         /// <summary>
@@ -221,6 +245,9 @@ namespace EquipmentSkinSystem
                 sb.AppendLine(",");
                 sb.AppendLine("    \"PetProfile\": ");
                 sb.Append(SerializeProfile(_petProfile, "        "));
+                sb.AppendLine(",");
+                sb.AppendLine("    \"AppSettings\": ");
+                sb.Append(SerializeAppSettings(_appSettings, "        "));
                 sb.AppendLine();
                 sb.Append("}");
                 
@@ -275,6 +302,22 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
+        /// 序列化應用程式設定
+        /// </summary>
+        private string SerializeAppSettings(AppSettings settings, string indent)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("{");
+            sb.AppendLine($"{indent}    \"EnableDebugLog\": {settings.EnableDebugLog.ToString().ToLower()},");
+            sb.AppendLine($"{indent}    \"EnableInfoLog\": {settings.EnableInfoLog.ToString().ToLower()},");
+            sb.AppendLine($"{indent}    \"EnableWarningLog\": {settings.EnableWarningLog.ToString().ToLower()},");
+            sb.AppendLine($"{indent}    \"EnableErrorLog\": {settings.EnableErrorLog.ToString().ToLower()},");
+            sb.AppendLine($"{indent}    \"Language\": \"{settings.Language}\"");
+            sb.Append($"{indent}}}");
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// 從 JSON 載入配置（手動解析，支援玩家和狗）
         /// </summary>
         public void LoadFromJson(string json)
@@ -307,6 +350,19 @@ namespace EquipmentSkinSystem
                             ValidateAndFixProfile(_petProfile, "Pet");
                         }
 
+                        // 載入 AppSettings
+                        var appSettingsMatch = System.Text.RegularExpressions.Regex.Match(json, @"""AppSettings"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
+                        if (appSettingsMatch.Success)
+                        {
+                            _appSettings = ParseAppSettings(appSettingsMatch.Groups[1].Value);
+                        }
+                        else
+                        {
+                            // 如果沒有 AppSettings，使用預設值
+                            _appSettings = new AppSettings();
+                            Logger.Debug("No AppSettings found, using defaults");
+                        }
+
                         Logger.Debug($"Loaded player and pet profiles, current: {_currentCharacterType}");
                     }
                     else
@@ -317,6 +373,7 @@ namespace EquipmentSkinSystem
                         ValidateAndFixProfile(_playerProfile, "Player");
                         _petProfile = new CharacterSkinProfile("Pet");
                         _currentCharacterType = CharacterType.Player;
+                        _appSettings = new AppSettings();
                         
                         // 自動保存為新格式
                         DataPersistence.SaveConfig();
@@ -327,6 +384,7 @@ namespace EquipmentSkinSystem
                 {
                     _playerProfile = new CharacterSkinProfile("Player");
                     _petProfile = new CharacterSkinProfile("Pet");
+                    _appSettings = new AppSettings();
                 }
             }
             catch (Exception e)
@@ -335,7 +393,57 @@ namespace EquipmentSkinSystem
                 Logger.Error($"Stack trace: {e.StackTrace}");
                 _playerProfile = new CharacterSkinProfile("Player");
                 _petProfile = new CharacterSkinProfile("Pet");
+                _appSettings = new AppSettings();
             }
+        }
+
+        /// <summary>
+        /// 解析應用程式設定
+        /// </summary>
+        private AppSettings ParseAppSettings(string json)
+        {
+            var settings = new AppSettings();
+            
+            try
+            {
+                var debugMatch = System.Text.RegularExpressions.Regex.Match(json, @"""EnableDebugLog"":\s*(true|false)");
+                if (debugMatch.Success)
+                {
+                    settings.EnableDebugLog = bool.Parse(debugMatch.Groups[1].Value);
+                }
+
+                var infoMatch = System.Text.RegularExpressions.Regex.Match(json, @"""EnableInfoLog"":\s*(true|false)");
+                if (infoMatch.Success)
+                {
+                    settings.EnableInfoLog = bool.Parse(infoMatch.Groups[1].Value);
+                }
+
+                var warningMatch = System.Text.RegularExpressions.Regex.Match(json, @"""EnableWarningLog"":\s*(true|false)");
+                if (warningMatch.Success)
+                {
+                    settings.EnableWarningLog = bool.Parse(warningMatch.Groups[1].Value);
+                }
+
+                var errorMatch = System.Text.RegularExpressions.Regex.Match(json, @"""EnableErrorLog"":\s*(true|false)");
+                if (errorMatch.Success)
+                {
+                    settings.EnableErrorLog = bool.Parse(errorMatch.Groups[1].Value);
+                }
+
+                var languageMatch = System.Text.RegularExpressions.Regex.Match(json, @"""Language"":\s*""([^""]*)""");
+                if (languageMatch.Success)
+                {
+                    settings.Language = languageMatch.Groups[1].Value;
+                }
+
+                Logger.Debug($"Parsed AppSettings: Debug={settings.EnableDebugLog}, Info={settings.EnableInfoLog}, Warning={settings.EnableWarningLog}, Error={settings.EnableErrorLog}, Language={settings.Language}");
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to parse AppSettings", e);
+            }
+            
+            return settings;
         }
 
         /// <summary>

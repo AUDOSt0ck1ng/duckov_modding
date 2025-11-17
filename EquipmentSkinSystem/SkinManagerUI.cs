@@ -23,6 +23,15 @@ namespace EquipmentSkinSystem
         private Sprite? _roundedSlotSprite;
         private Button? _playerButton;
         private Button? _petButton;
+        private Button? _settingsButton;
+        private GameObject? _settingsPanel;
+        private bool _isSettingsPanelVisible = false;
+        private GameObject? _backgroundPanel;
+        private Button? _logTabButton;
+        private Button? _languageTabButton;
+        private GameObject? _logTabContent;
+        private GameObject? _languageTabContent;
+        private string _currentTab = "Log";
 
         private class SlotUIElements
         {
@@ -74,19 +83,25 @@ namespace EquipmentSkinSystem
                 Logger.Debug("Canvas created with GraphicRaycaster");
 
                 // 創建背景面板
-                GameObject backgroundPanel = CreateBackgroundPanel(_uiPanel.transform);
+                _backgroundPanel = CreateBackgroundPanel(_uiPanel.transform);
 
                 // 創建標題
-                CreateTitle(backgroundPanel.transform);
+                CreateTitle(_backgroundPanel.transform);
+
+                // 創建功能按鈕（右上角）
+                CreateSettingsButton(_backgroundPanel.transform);
 
                 // 創建角色切換按鈕
-                CreateCharacterToggle(backgroundPanel.transform);
+                CreateCharacterToggle(_backgroundPanel.transform);
 
                 // 創建槽位列表
-                CreateSlotList(backgroundPanel.transform);
+                CreateSlotList(_backgroundPanel.transform);
 
                 // 創建底部按鈕
-                CreateBottomButtons(backgroundPanel.transform);
+                CreateBottomButtons(_backgroundPanel.transform);
+
+                // 創建設定面板（與背景面板同級，覆蓋整個背景面板）
+                CreateSettingsPanel(_uiPanel.transform);
 
                 _uiPanel.SetActive(false);
 
@@ -143,6 +158,54 @@ namespace EquipmentSkinSystem
             Shadow textShadow = titleObj.AddComponent<Shadow>();
             textShadow.effectColor = new Color(0, 0, 0, 0.8f);
             textShadow.effectDistance = new Vector2(2, -2);
+        }
+
+        private void CreateSettingsButton(Transform parent)
+        {
+            GameObject buttonObj = new GameObject("SettingsButton");
+            buttonObj.transform.SetParent(parent, false);
+
+            RectTransform rect = buttonObj.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.sizeDelta = new Vector2(50, 50);
+            rect.anchoredPosition = new Vector2(-15, -15); // 右上角，留一點邊距
+
+            Image image = buttonObj.AddComponent<Image>();
+            if (_roundedButtonSprite != null)
+            {
+                image.sprite = _roundedButtonSprite;
+                image.type = Image.Type.Sliced;
+            }
+            image.color = new Color(0.4f, 0.4f, 0.4f, 1f);
+            image.raycastTarget = true;
+
+            Button button = buttonObj.AddComponent<Button>();
+            ColorBlock colors = button.colors;
+            colors.normalColor = new Color(0.4f, 0.4f, 0.4f, 1f);
+            colors.highlightedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
+            colors.pressedColor = new Color(0.3f, 0.3f, 0.3f, 1f);
+            button.colors = colors;
+
+            button.onClick.AddListener(() => ToggleSettingsPanel());
+
+            // 文字（齒輪圖標用文字代替）
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(buttonObj.transform, false);
+
+            TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = "⚙";
+            text.fontSize = 24;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = Color.white;
+            text.raycastTarget = false;
+
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+
+            _settingsButton = button;
         }
 
         private void CreateCharacterToggle(Transform parent)
@@ -666,6 +729,445 @@ namespace EquipmentSkinSystem
             CreateButton(buttonContainer.transform, "關閉", OnCloseClicked);
         }
 
+        private void CreateSettingsPanel(Transform parent)
+        {
+            // 創建設定面板背景（覆蓋整個背景面板）
+            GameObject panelObj = new GameObject("SettingsPanel");
+            panelObj.transform.SetParent(parent, false);
+
+            RectTransform panelRect = panelObj.AddComponent<RectTransform>();
+            // 設定面板需要與背景面板同級，才能獨立顯示
+            // 使用與背景面板相同的尺寸和位置
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(620, 660); // 與背景面板相同尺寸
+            panelRect.anchoredPosition = Vector2.zero;
+
+            Image panelImage = panelObj.AddComponent<Image>();
+            if (_roundedSprite != null)
+            {
+                panelImage.sprite = _roundedSprite;
+                panelImage.type = Image.Type.Sliced;
+            }
+            panelImage.color = new Color(0.12f, 0.18f, 0.25f, 0.92f); // 維持透明設計
+
+            // 標題（與主 UI 相同風格）
+            GameObject titleObj = new GameObject("Title");
+            titleObj.transform.SetParent(panelObj.transform, false);
+
+            RectTransform titleRect = titleObj.AddComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0.5f, 1f);
+            titleRect.anchorMax = new Vector2(0.5f, 1f);
+            titleRect.sizeDelta = new Vector2(600, 70);
+            titleRect.anchoredPosition = new Vector2(0, -45);
+
+            TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
+            titleText.text = "功能設定";
+            titleText.fontSize = 32;
+            titleText.alignment = TextAlignmentOptions.Center;
+            titleText.color = new Color(1f, 0.95f, 0.85f, 1f); // 暖白色
+            titleText.fontStyle = FontStyles.Bold;
+            
+            // 添加文字陰影
+            Shadow textShadow = titleObj.AddComponent<Shadow>();
+            textShadow.effectColor = new Color(0, 0, 0, 0.8f);
+            textShadow.effectDistance = new Vector2(2, -2);
+
+            // 頁籤按鈕容器
+            GameObject tabContainer = new GameObject("TabContainer");
+            tabContainer.transform.SetParent(panelObj.transform, false);
+
+            RectTransform tabContainerRect = tabContainer.AddComponent<RectTransform>();
+            tabContainerRect.anchorMin = new Vector2(0.5f, 1f);
+            tabContainerRect.anchorMax = new Vector2(0.5f, 1f);
+            tabContainerRect.sizeDelta = new Vector2(300, 50);
+            tabContainerRect.anchoredPosition = new Vector2(0, -100);
+            tabContainerRect.pivot = new Vector2(0.5f, 0.5f);
+
+            // 日誌設定頁籤
+            _logTabButton = CreateTabButton(tabContainer.transform, "日誌設定", "Log");
+            RectTransform logTabRect = _logTabButton.GetComponent<RectTransform>();
+            logTabRect.anchorMin = new Vector2(0.5f, 0.5f);
+            logTabRect.anchorMax = new Vector2(0.5f, 0.5f);
+            logTabRect.pivot = new Vector2(0.5f, 0.5f);
+            logTabRect.anchoredPosition = new Vector2(-75, 0);
+
+            // 語言設定頁籤
+            _languageTabButton = CreateTabButton(tabContainer.transform, "語言", "Language");
+            RectTransform languageTabRect = _languageTabButton.GetComponent<RectTransform>();
+            languageTabRect.anchorMin = new Vector2(0.5f, 0.5f);
+            languageTabRect.anchorMax = new Vector2(0.5f, 0.5f);
+            languageTabRect.pivot = new Vector2(0.5f, 0.5f);
+            languageTabRect.anchoredPosition = new Vector2(75, 0);
+
+            // 內容區域（與主 UI 的槽位列表區域相同位置）
+            GameObject contentContainer = new GameObject("ContentContainer");
+            contentContainer.transform.SetParent(panelObj.transform, false);
+
+            RectTransform contentContainerRect = contentContainer.AddComponent<RectTransform>();
+            contentContainerRect.anchorMin = new Vector2(0.5f, 0f);
+            contentContainerRect.anchorMax = new Vector2(0.5f, 1f);
+            contentContainerRect.sizeDelta = new Vector2(600, 0);
+            contentContainerRect.anchoredPosition = new Vector2(0, 0);
+            contentContainerRect.offsetMin = new Vector2(-300, 160); // 底部留空間給按鈕
+            contentContainerRect.offsetMax = new Vector2(300, -160); // 頂部留空間給標題和頁籤
+
+            // 日誌設定內容
+            _logTabContent = CreateLogTabContent(contentContainer.transform);
+            _logTabContent.SetActive(true);
+
+            // 語言設定內容
+            _languageTabContent = CreateLanguageTabContent(contentContainer.transform);
+            _languageTabContent.SetActive(false);
+
+            // 底部按鈕（與主 UI 相同風格）
+            GameObject bottomButtonContainer = new GameObject("BottomButtons");
+            bottomButtonContainer.transform.SetParent(panelObj.transform, false);
+
+            RectTransform bottomButtonRect = bottomButtonContainer.AddComponent<RectTransform>();
+            bottomButtonRect.anchorMin = new Vector2(0.5f, 0f);
+            bottomButtonRect.anchorMax = new Vector2(0.5f, 0f);
+            bottomButtonRect.sizeDelta = new Vector2(400, 60);
+            bottomButtonRect.anchoredPosition = new Vector2(0, 60); // 恢復到原本位置
+
+            HorizontalLayoutGroup bottomLayout = bottomButtonContainer.AddComponent<HorizontalLayoutGroup>();
+            bottomLayout.spacing = 20;
+            bottomLayout.childControlHeight = true;
+            bottomLayout.childControlWidth = true;
+            bottomLayout.childForceExpandHeight = false;
+            bottomLayout.childForceExpandWidth = true;
+            bottomLayout.padding = new RectOffset(10, 10, 5, 5);
+
+            CreateButton(bottomButtonContainer.transform, "關閉", () => ToggleSettingsPanel());
+
+            _settingsPanel = panelObj;
+            _settingsPanel.SetActive(false);
+        }
+
+        private Button CreateTabButton(Transform parent, string label, string tabName)
+        {
+            GameObject buttonObj = new GameObject($"{tabName}TabButton");
+            buttonObj.transform.SetParent(parent, false);
+
+            RectTransform rect = buttonObj.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(140, 50);
+
+            Image image = buttonObj.AddComponent<Image>();
+            if (_roundedButtonSprite != null)
+            {
+                image.sprite = _roundedButtonSprite;
+                image.type = Image.Type.Sliced;
+            }
+            image.color = Color.white;
+            image.raycastTarget = true;
+
+            Button button = buttonObj.AddComponent<Button>();
+            
+            // 根據當前選中狀態設置顏色
+            bool isSelected = _currentTab == tabName;
+            ColorBlock colors = button.colors;
+            colors.normalColor = isSelected 
+                ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+                : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
+            colors.highlightedColor = new Color(157f/255f, 220f/255f, 235f/255f, 1f);
+            colors.pressedColor = new Color(3f/255f, 159f/255f, 196f/255f, 1f);
+            colors.selectedColor = colors.normalColor;
+            colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+            button.colors = colors;
+
+            button.onClick.AddListener(() => SwitchTab(tabName));
+
+            // 文字
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(buttonObj.transform, false);
+
+            TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = label;
+            text.fontSize = 20;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = Color.white;
+            text.fontStyle = FontStyles.Bold;
+            text.raycastTarget = false;
+
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+
+            return button;
+        }
+
+        private GameObject CreateLogTabContent(Transform parent)
+        {
+            GameObject contentObj = new GameObject("LogTabContent");
+            contentObj.transform.SetParent(parent, false);
+
+            RectTransform contentRect = contentObj.AddComponent<RectTransform>();
+            contentRect.anchorMin = Vector2.zero;
+            contentRect.anchorMax = Vector2.one;
+            contentRect.sizeDelta = Vector2.zero;
+
+            VerticalLayoutGroup layout = contentObj.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 15;
+            layout.padding = new RectOffset(20, 20, 20, 20);
+            layout.childControlHeight = false;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+
+            // 創建 Log 控制 Toggle
+            CreateLogToggle(contentObj.transform, "調試日誌 (Debug)", "EnableDebugLog");
+            CreateLogToggle(contentObj.transform, "資訊日誌 (Info)", "EnableInfoLog");
+            CreateLogToggle(contentObj.transform, "警告日誌 (Warning)", "EnableWarningLog");
+            CreateLogToggle(contentObj.transform, "錯誤日誌 (Error)", "EnableErrorLog");
+
+            return contentObj;
+        }
+
+        private GameObject CreateLanguageTabContent(Transform parent)
+        {
+            GameObject contentObj = new GameObject("LanguageTabContent");
+            contentObj.transform.SetParent(parent, false);
+
+            RectTransform contentRect = contentObj.AddComponent<RectTransform>();
+            contentRect.anchorMin = Vector2.zero;
+            contentRect.anchorMax = Vector2.one;
+            contentRect.sizeDelta = Vector2.zero;
+
+            VerticalLayoutGroup layout = contentObj.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 15;
+            layout.padding = new RectOffset(20, 20, 20, 20);
+            layout.childControlHeight = false;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+
+            // 語言選項標題
+            TextMeshProUGUI titleText = CreateText(contentObj.transform, "選擇語言", 0);
+            titleText.fontSize = 22;
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.alignment = TextAlignmentOptions.Center;
+            titleText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 30);
+
+            // 目前只有繁體中文
+            CreateLanguageOption(contentObj.transform, "繁體中文", "zh-TW", true);
+
+            // 預留空間說明
+            TextMeshProUGUI noteText = CreateText(contentObj.transform, "（其他語言選項將在未來版本中添加）", 0);
+            noteText.fontSize = 16;
+            noteText.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+            noteText.alignment = TextAlignmentOptions.Center;
+            noteText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 25);
+
+            return contentObj;
+        }
+
+        private void CreateLanguageOption(Transform parent, string languageName, string languageCode, bool isSelected)
+        {
+            GameObject optionObj = new GameObject($"LanguageOption_{languageCode}");
+            optionObj.transform.SetParent(parent, false);
+
+            RectTransform optionRect = optionObj.AddComponent<RectTransform>();
+            optionRect.sizeDelta = new Vector2(0, 40);
+
+            HorizontalLayoutGroup layout = optionObj.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 10;
+            layout.padding = new RectOffset(0, 0, 0, 0);
+            layout.childControlHeight = true;
+            layout.childControlWidth = false;
+            layout.childForceExpandHeight = true;
+            layout.childForceExpandWidth = false;
+
+            // 語言名稱
+            TextMeshProUGUI nameText = CreateText(optionObj.transform, languageName, 0);
+            RectTransform nameRect = nameText.gameObject.GetComponent<RectTransform>();
+            nameRect.sizeDelta = new Vector2(200, 0);
+            nameText.alignment = TextAlignmentOptions.MidlineLeft;
+            nameText.fontSize = 18;
+            
+            // 確保文字垂直置中
+            nameRect.anchorMin = new Vector2(0, 0.5f);
+            nameRect.anchorMax = new Vector2(0, 0.5f);
+            nameRect.pivot = new Vector2(0, 0.5f);
+
+            // 選中標記（目前只有一個選項，所以總是選中）
+            if (isSelected)
+            {
+                TextMeshProUGUI checkText = CreateText(optionObj.transform, "✓", 0);
+                RectTransform checkRect = checkText.gameObject.GetComponent<RectTransform>();
+                checkRect.sizeDelta = new Vector2(30, 0);
+                checkText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+                checkText.fontSize = 24;
+                checkText.fontStyle = FontStyles.Bold;
+                checkText.alignment = TextAlignmentOptions.Center;
+                
+                // 確保打勾標記垂直置中
+                checkRect.anchorMin = new Vector2(1f, 0.5f);
+                checkRect.anchorMax = new Vector2(1f, 0.5f);
+                checkRect.pivot = new Vector2(0.5f, 0.5f);
+            }
+        }
+
+        private void SwitchTab(string tabName)
+        {
+            _currentTab = tabName;
+            
+            // 更新頁籤按鈕顏色
+            if (_logTabButton != null && _languageTabButton != null)
+            {
+                bool logSelected = tabName == "Log";
+                bool langSelected = tabName == "Language";
+                
+                ColorBlock logColors = _logTabButton.colors;
+                logColors.normalColor = logSelected 
+                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)
+                    : new Color(0.3f, 0.3f, 0.3f, 1f);
+                _logTabButton.colors = logColors;
+
+                ColorBlock langColors = _languageTabButton.colors;
+                langColors.normalColor = langSelected 
+                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)
+                    : new Color(0.3f, 0.3f, 0.3f, 1f);
+                _languageTabButton.colors = langColors;
+            }
+
+            // 切換內容顯示
+            if (_logTabContent != null && _languageTabContent != null)
+            {
+                _logTabContent.SetActive(tabName == "Log");
+                _languageTabContent.SetActive(tabName == "Language");
+            }
+
+            Logger.Debug($"Switched to tab: {tabName}");
+        }
+
+        private void CreateLogToggle(Transform parent, string label, string settingKey)
+        {
+            GameObject toggleContainer = new GameObject($"LogToggle_{settingKey}");
+            toggleContainer.transform.SetParent(parent, false);
+
+            RectTransform containerRect = toggleContainer.AddComponent<RectTransform>();
+            containerRect.sizeDelta = new Vector2(0, 35);
+
+            HorizontalLayoutGroup layout = toggleContainer.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 10;
+            layout.padding = new RectOffset(0, 0, 0, 0);
+            layout.childControlHeight = true;
+            layout.childControlWidth = false;
+            layout.childForceExpandHeight = true;
+            layout.childForceExpandWidth = false;
+
+            // 標籤文字
+            TextMeshProUGUI labelText = CreateText(toggleContainer.transform, label, 0);
+            labelText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 0);
+            labelText.alignment = TextAlignmentOptions.MidlineLeft;
+            labelText.fontSize = 16;
+
+            // Toggle
+            GameObject toggleObj = new GameObject("Toggle");
+            toggleObj.transform.SetParent(toggleContainer.transform, false);
+
+            RectTransform toggleRect = toggleObj.AddComponent<RectTransform>();
+            toggleRect.sizeDelta = new Vector2(50, 30);
+
+            Toggle toggle = toggleObj.AddComponent<Toggle>();
+            
+            // 根據設定鍵設置初始值
+            var settings = EquipmentSkinDataManager.Instance.AppSettings;
+            bool initialValue = settingKey switch
+            {
+                "EnableDebugLog" => settings.EnableDebugLog,
+                "EnableInfoLog" => settings.EnableInfoLog,
+                "EnableWarningLog" => settings.EnableWarningLog,
+                "EnableErrorLog" => settings.EnableErrorLog,
+                _ => false
+            };
+            toggle.isOn = initialValue;
+
+            toggle.onValueChanged.AddListener((value) => OnLogSettingChanged(settingKey, value));
+
+            // Toggle 背景
+            GameObject bgObj = new GameObject("Background");
+            bgObj.transform.SetParent(toggleObj.transform, false);
+
+            RectTransform bgRect = bgObj.AddComponent<RectTransform>();
+            bgRect.anchorMin = Vector2.zero;
+            bgRect.anchorMax = Vector2.one;
+            bgRect.sizeDelta = Vector2.zero;
+
+            Image bgImage = bgObj.AddComponent<Image>();
+            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+
+            // Toggle 勾選標記
+            GameObject checkmarkObj = new GameObject("Checkmark");
+            checkmarkObj.transform.SetParent(bgObj.transform, false);
+
+            RectTransform checkmarkRect = checkmarkObj.AddComponent<RectTransform>();
+            checkmarkRect.anchorMin = new Vector2(0.2f, 0.2f);
+            checkmarkRect.anchorMax = new Vector2(0.8f, 0.8f);
+            checkmarkRect.sizeDelta = Vector2.zero;
+
+            Image checkmarkImage = checkmarkObj.AddComponent<Image>();
+            checkmarkImage.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+
+            toggle.graphic = checkmarkImage;
+            toggle.targetGraphic = bgImage;
+        }
+
+        private void OnLogSettingChanged(string settingKey, bool value)
+        {
+            try
+            {
+                var settings = EquipmentSkinDataManager.Instance.AppSettings;
+                switch (settingKey)
+                {
+                    case "EnableDebugLog":
+                        settings.EnableDebugLog = value;
+                        break;
+                    case "EnableInfoLog":
+                        settings.EnableInfoLog = value;
+                        break;
+                    case "EnableWarningLog":
+                        settings.EnableWarningLog = value;
+                        break;
+                    case "EnableErrorLog":
+                        settings.EnableErrorLog = value;
+                        break;
+                }
+
+                // 立即保存設定
+                DataPersistence.SaveConfig();
+                Logger.Info($"Log setting changed: {settingKey} = {value}");
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Error changing log setting: {settingKey}", e);
+            }
+        }
+
+        private void ToggleSettingsPanel()
+        {
+            if (_settingsPanel != null && _backgroundPanel != null)
+            {
+                _isSettingsPanelVisible = !_isSettingsPanelVisible;
+                
+                if (_isSettingsPanelVisible)
+                {
+                    // 顯示設定面板，隱藏主面板
+                    _settingsPanel.SetActive(true);
+                    _backgroundPanel.SetActive(false);
+                    Logger.Debug("Settings panel opened, main panel hidden");
+                }
+                else
+                {
+                    // 隱藏設定面板，顯示主面板
+                    _settingsPanel.SetActive(false);
+                    _backgroundPanel.SetActive(true);
+                    Logger.Debug("Settings panel closed, main panel shown");
+                }
+            }
+        }
+
         private string GetSlotDisplayName(EquipmentSlotType slotType)
         {
             return slotType switch
@@ -751,7 +1253,7 @@ namespace EquipmentSkinSystem
         /// </summary>
         private Slot? GetSlotFromController(CharacterEquipmentController controller, EquipmentSlotType slotType)
         {
-            string fieldName = slotType switch
+            string? fieldName = slotType switch
             {
                 EquipmentSlotType.Armor => "armorSlot",
                 EquipmentSlotType.Helmet => "helmatSlot",
@@ -766,6 +1268,11 @@ namespace EquipmentSkinSystem
             return Traverse.Create(controller).Field(fieldName).GetValue<Slot>();
         }
 
+        /// <summary>
+        /// 切換 UI 顯示狀態
+        /// - 如果 UI 已關閉：打開第一層（主面板）
+        /// - 如果 UI 已打開（無論在第一層還是第二層）：關閉整個 UI
+        /// </summary>
         public void ToggleUI()
         {
             _isUIVisible = !_isUIVisible;
@@ -774,10 +1281,12 @@ namespace EquipmentSkinSystem
                 _uiPanel.SetActive(_isUIVisible);
                 if (_isUIVisible)
                 {
+                    // UI 關閉時按 F7：打開第一層（主面板）
                     ShowUI();
                 }
                 else
                 {
+                    // UI 已打開時按 F7：關閉整個 UI（無論當前在哪一層）
                     HideUI();
                 }
             }
@@ -789,6 +1298,16 @@ namespace EquipmentSkinSystem
             if (_uiPanel != null)
             {
                 _uiPanel.SetActive(true);
+                
+                // 每次從關閉狀態打開 UI 時，都顯示第一層（主面板）
+                // 這確保了無論之前在哪一層，關閉後重新打開都會回到第一層
+                if (_backgroundPanel != null && _settingsPanel != null)
+                {
+                    _backgroundPanel.SetActive(true);
+                    _settingsPanel.SetActive(false);
+                    _isSettingsPanelVisible = false;
+                    Logger.Debug("ShowUI - Reset to main panel");
+                }
                 
                 // 確保載入最新配置
                 Logger.Debug("ShowUI - Loading config...");

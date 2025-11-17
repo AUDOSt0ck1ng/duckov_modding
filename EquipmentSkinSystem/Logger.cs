@@ -4,44 +4,46 @@ namespace EquipmentSkinSystem
 {
     /// <summary>
     /// 統一的日誌管理系統
-    /// 可透過配置文件控制是否輸出日誌
+    /// 可透過 AppSettings 控制是否輸出日誌
     /// </summary>
     public static class Logger
     {
         private const string PREFIX = "[EquipmentSkinSystem]";
-        private static bool _configLoaded = false;
 
         /// <summary>
-        /// 是否啟用調試日誌（從配置文件讀取）
+        /// 是否啟用調試日誌（從 AppSettings 讀取，如果未初始化則使用預設值 false）
         /// </summary>
-        public static bool EnableDebugLog => GetConfigValue("EnableDebugLog", false);
+        public static bool EnableDebugLog => GetSettingValue(() => EquipmentSkinDataManager.Instance.AppSettings.EnableDebugLog, false);
 
         /// <summary>
-        /// 是否啟用資訊日誌（從配置文件讀取）
+        /// 是否啟用資訊日誌（從 AppSettings 讀取，如果未初始化則使用預設值 true）
         /// </summary>
-        public static bool EnableInfoLog => GetConfigValue("EnableInfoLog", true);
+        public static bool EnableInfoLog => GetSettingValue(() => EquipmentSkinDataManager.Instance.AppSettings.EnableInfoLog, true);
 
         /// <summary>
-        /// 是否啟用警告日誌（從配置文件讀取）
+        /// 是否啟用警告日誌（從 AppSettings 讀取，如果未初始化則使用預設值 true）
         /// </summary>
-        public static bool EnableWarningLog => GetConfigValue("EnableWarningLog", true);
+        public static bool EnableWarningLog => GetSettingValue(() => EquipmentSkinDataManager.Instance.AppSettings.EnableWarningLog, true);
 
         /// <summary>
-        /// 是否啟用錯誤日誌（從配置文件讀取）
+        /// 是否啟用錯誤日誌（從 AppSettings 讀取，如果未初始化則使用預設值 true）
         /// </summary>
-        public static bool EnableErrorLog => GetConfigValue("EnableErrorLog", true);
+        public static bool EnableErrorLog => GetSettingValue(() => EquipmentSkinDataManager.Instance.AppSettings.EnableErrorLog, true);
 
         /// <summary>
-        /// 從配置文件讀取布林值
+        /// 安全地獲取設定值，如果 AppSettings 尚未初始化則使用預設值
         /// </summary>
-        private static bool GetConfigValue(string key, bool defaultValue)
+        private static bool GetSettingValue(System.Func<bool> getter, bool defaultValue)
         {
-            if (!_configLoaded)
+            try
             {
-                // 延遲載入配置，避免在靜態構造時出錯
-                _configLoaded = true;
+                return getter();
             }
-            return ConfigReader.GetBool("Logger", key, defaultValue);
+            catch
+            {
+                // 如果 AppSettings 尚未初始化，使用預設值
+                return defaultValue;
+            }
         }
 
         /// <summary>

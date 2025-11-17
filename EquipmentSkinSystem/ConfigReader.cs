@@ -159,57 +159,18 @@ namespace EquipmentSkinSystem
                     Directory.CreateDirectory(directory);
                 }
 
-                string existingContent = "";
-                bool hasLoggerSection = false;
-
-                // 如果文件已存在，讀取現有內容
-                if (File.Exists(filePath))
+                // 如果文件不存在，創建基本的 Mod 資訊配置
+                // 注意：Log 設定已遷移到 AppSettings，不再使用 info.ini
+                if (!File.Exists(filePath))
                 {
-                    existingContent = File.ReadAllText(filePath);
-                    hasLoggerSection = existingContent.Contains("[Logger]");
-                }
-
-                // 如果沒有 Logger 節，添加它
-                if (!hasLoggerSection)
-                {
-                    string loggerSection = @"
-
-[Logger]
-; 是否啟用調試日誌（詳細的執行流程）
-EnableDebugLog = false
-
-; 是否啟用資訊日誌（重要的狀態變更）
-EnableInfoLog = true
-
-; 是否啟用警告日誌（可能的問題）
-EnableWarningLog = true
-
-; 是否啟用錯誤日誌（必須輸出）
-EnableErrorLog = true
-";
-
-                    // 如果文件不存在，創建完整的默認配置
-                    if (string.IsNullOrEmpty(existingContent))
-                    {
-                        existingContent = @"name = EquipmentSkinSystem
+                    string defaultContent = @"name = EquipmentSkinSystem
 
 displayName = 裝備外觀系統
 
 description = 讓你的角色實際裝備和外觀裝備分離！按 F7 打開管理界面，自由設定每個裝備槽位的外觀。
 ";
-                    }
-                    else
-                    {
-                        // 確保現有內容以換行結尾
-                        if (!existingContent.EndsWith("\n") && !existingContent.EndsWith("\r\n"))
-                        {
-                            existingContent += "\n";
-                        }
-                    }
-
-                    existingContent += loggerSection;
-                    File.WriteAllText(filePath, existingContent);
-                    UnityEngine.Debug.Log($"[EquipmentSkinSystem] Added Logger section to config file: {filePath}");
+                    File.WriteAllText(filePath, defaultContent);
+                    UnityEngine.Debug.Log($"[EquipmentSkinSystem] Created default config file: {filePath}");
                 }
             }
             catch (Exception e)

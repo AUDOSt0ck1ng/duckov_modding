@@ -71,9 +71,8 @@ namespace EquipmentSkinSystem
         {
             try
             {
-                string filePath = SaveFilePath.Replace('\\', '/');
                 Logger.Debug("LoadConfig called");
-                Logger.Debug($"Looking for file: {filePath}");
+                Logger.Debug($"Looking for file: {SaveFilePath}");
                 
                 if (File.Exists(SaveFilePath))
                 {
@@ -82,12 +81,17 @@ namespace EquipmentSkinSystem
                     Logger.Debug($"Loaded JSON content: {json}");
                     
                     EquipmentSkinDataManager.Instance.LoadFromJson(json);
-                    Logger.Info($"Configuration loaded from: {filePath}");
+                    Logger.Info($"Configuration loaded from: {SaveFilePath}");
                 }
                 else
                 {
-                    Logger.Error($"No saved configuration found at: {filePath}");
-                    Logger.Debug("Using default configuration.");
+                    Logger.Info($"No saved configuration found at: {SaveFilePath}");
+                    Logger.Debug("Using default configuration and saving it for the first time.");
+                    
+                    // 第一次載入時，使用預設配置並保存
+                    EquipmentSkinDataManager.Instance.LoadFromJson(""); // 這會創建預設配置
+                    SaveConfig(); // 保存預設配置
+                    Logger.Info("Default configuration saved for the first time.");
                 }
             }
             catch (Exception e)

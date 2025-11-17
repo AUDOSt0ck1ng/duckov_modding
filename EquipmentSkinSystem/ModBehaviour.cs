@@ -48,7 +48,7 @@ namespace EquipmentSkinSystem
 
                 Logger.Info("Initialization completed successfully!");
                 Logger.Info("Press F7 to open UI (UI will be created on first use)");
-                Logger.Info($"Config file location: {Path.Combine(Application.persistentDataPath, "EquipmentSkinSystem", "info.ini")}");
+                Logger.Info($"Config file location: {Path.Combine(Application.persistentDataPath, "EquipmentSkinSystem", "skin_config.json")}");
             }
             catch (Exception e)
             {
