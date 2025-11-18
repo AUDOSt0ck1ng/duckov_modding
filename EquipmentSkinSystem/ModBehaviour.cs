@@ -36,6 +36,9 @@ namespace EquipmentSkinSystem
                 // 初始化數據管理器
                 InitializeDataManager();
 
+                // 初始化語言系統
+                Localization.Initialize();
+
                 // 應用 Harmony 補丁
                 ApplyHarmonyPatches();
 

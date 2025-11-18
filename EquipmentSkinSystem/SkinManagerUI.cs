@@ -32,6 +32,9 @@ namespace EquipmentSkinSystem
         private GameObject? _logTabContent;
         private GameObject? _languageTabContent;
         private string _currentTab = "Log";
+        
+        // 保存所有需要語言更新的文字元素
+        private Dictionary<string, TextMeshProUGUI> _localizedTexts = new Dictionary<string, TextMeshProUGUI>();
 
         private class SlotUIElements
         {
@@ -148,7 +151,8 @@ namespace EquipmentSkinSystem
             rect.anchoredPosition = new Vector2(0, -45);
 
             TextMeshProUGUI text = titleObj.AddComponent<TextMeshProUGUI>();
-            text.text = "裝備外觀管理系統";
+            text.text = Localization.Get("UI_Title", "裝備外觀");
+            _localizedTexts["UI_Title"] = text;
             text.fontSize = 32;
             text.alignment = TextAlignmentOptions.Center;
             text.color = new Color(1f, 0.95f, 0.85f, 1f); // 暖白色
@@ -169,7 +173,7 @@ namespace EquipmentSkinSystem
             rect.anchorMin = new Vector2(1f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
             rect.sizeDelta = new Vector2(50, 50);
-            rect.anchoredPosition = new Vector2(-15, -15); // 右上角，留一點邊距
+            rect.anchoredPosition = new Vector2(-50, -50); // 右上角，留一點邊距
 
             Image image = buttonObj.AddComponent<Image>();
             if (_roundedButtonSprite != null)
@@ -221,7 +225,9 @@ namespace EquipmentSkinSystem
             rect.pivot = new Vector2(0.5f, 0.5f); // 容器居中
 
             // 玩家按鈕（左側，相對於容器中心）
-            _playerButton = CreateCharacterButton(toggleContainer.transform, "玩家", CharacterType.Player);
+            _playerButton = CreateCharacterButton(toggleContainer.transform, Localization.Get("UI_Player", "玩家"), CharacterType.Player);
+            var playerText = _playerButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (playerText != null) _localizedTexts["UI_Player"] = playerText;
             RectTransform playerRect = _playerButton.GetComponent<RectTransform>();
             playerRect.anchorMin = new Vector2(0.5f, 0.5f);
             playerRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -229,7 +235,9 @@ namespace EquipmentSkinSystem
             playerRect.anchoredPosition = new Vector2(-75, 0); // 左側：-75 = -(140/2 + 10/2)
             
             // 狗按鈕（右側，相對於容器中心）
-            _petButton = CreateCharacterButton(toggleContainer.transform, "狗", CharacterType.Pet);
+            _petButton = CreateCharacterButton(toggleContainer.transform, Localization.Get("UI_Pet", "狗"), CharacterType.Pet);
+            var petText = _petButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (petText != null) _localizedTexts["UI_Pet"] = petText;
             RectTransform petRect = _petButton.GetComponent<RectTransform>();
             petRect.anchorMin = new Vector2(0.5f, 0.5f);
             petRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -476,7 +484,7 @@ namespace EquipmentSkinSystem
             elements.SlotNameText = CreateText(slotObj.transform, GetSlotDisplayName(slotType), 80);
 
             // 當前裝備 ID 顯示
-            elements.CurrentEquipmentText = CreateText(slotObj.transform, "當前: --", 100);
+            elements.CurrentEquipmentText = CreateText(slotObj.transform, Localization.Get("UI_Current", "當前: ") + "--", 100);
             elements.CurrentEquipmentText.color = new Color(0.7f, 0.9f, 1f, 1f); // 淺藍色
             elements.CurrentEquipmentText.fontSize = 14;
 
@@ -484,7 +492,9 @@ namespace EquipmentSkinSystem
             elements.SkinItemInput = CreateInputField(slotObj.transform, "外觀ID", 150, (value) => OnSkinItemChanged(slotType, value));
 
             // 清空按鈕（最右邊）
-            elements.ClearButton = CreateButton(slotObj.transform, "清空", () => OnClearSlotClicked(slotType));
+            elements.ClearButton = CreateButton(slotObj.transform, Localization.Get("UI_Clear", "清空"), () => OnClearSlotClicked(slotType));
+            var clearText = elements.ClearButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (clearText != null) _localizedTexts[$"UI_Clear_{slotType}"] = clearText;
 
             _slotUIElements[slotType] = elements;
         }
@@ -724,9 +734,17 @@ namespace EquipmentSkinSystem
             layout.childForceExpandWidth = true;
             layout.padding = new RectOffset(10, 10, 5, 5);
 
-            CreateButton(buttonContainer.transform, "保存配置", OnSaveClicked);
-            CreateButton(buttonContainer.transform, "重置配置", OnResetClicked);
-            CreateButton(buttonContainer.transform, "關閉", OnCloseClicked);
+            var saveButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Save", "保存配置"), OnSaveClicked);
+            var saveText = saveButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (saveText != null) _localizedTexts["UI_Save"] = saveText;
+            
+            var resetButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Reset", "重置配置"), OnResetClicked);
+            var resetText = resetButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (resetText != null) _localizedTexts["UI_Reset"] = resetText;
+            
+            var closeButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Close", "關閉"), OnCloseClicked);
+            var closeText = closeButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (closeText != null) _localizedTexts["UI_Close"] = closeText;
         }
 
         private void CreateSettingsPanel(Transform parent)
@@ -762,7 +780,8 @@ namespace EquipmentSkinSystem
             titleRect.anchoredPosition = new Vector2(0, -45);
 
             TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
-            titleText.text = "功能設定";
+            titleText.text = Localization.Get("Settings_Title", "功能設定");
+            _localizedTexts["Settings_Title"] = titleText;
             titleText.fontSize = 32;
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.color = new Color(1f, 0.95f, 0.85f, 1f); // 暖白色
@@ -785,7 +804,9 @@ namespace EquipmentSkinSystem
             tabContainerRect.pivot = new Vector2(0.5f, 0.5f);
 
             // 日誌設定頁籤
-            _logTabButton = CreateTabButton(tabContainer.transform, "日誌設定", "Log");
+            _logTabButton = CreateTabButton(tabContainer.transform, Localization.Get("Settings_Tab_Log", "日誌設定"), "Log");
+            var logTabText = _logTabButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (logTabText != null) _localizedTexts["Settings_Tab_Log"] = logTabText;
             RectTransform logTabRect = _logTabButton.GetComponent<RectTransform>();
             logTabRect.anchorMin = new Vector2(0.5f, 0.5f);
             logTabRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -793,7 +814,9 @@ namespace EquipmentSkinSystem
             logTabRect.anchoredPosition = new Vector2(-75, 0);
 
             // 語言設定頁籤
-            _languageTabButton = CreateTabButton(tabContainer.transform, "語言", "Language");
+            _languageTabButton = CreateTabButton(tabContainer.transform, Localization.Get("Settings_Tab_Language", "語言"), "Language");
+            var languageTabText = _languageTabButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (languageTabText != null) _localizedTexts["Settings_Tab_Language"] = languageTabText;
             RectTransform languageTabRect = _languageTabButton.GetComponent<RectTransform>();
             languageTabRect.anchorMin = new Vector2(0.5f, 0.5f);
             languageTabRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -838,7 +861,9 @@ namespace EquipmentSkinSystem
             bottomLayout.childForceExpandWidth = true;
             bottomLayout.padding = new RectOffset(10, 10, 5, 5);
 
-            CreateButton(bottomButtonContainer.transform, "關閉", () => ToggleSettingsPanel());
+            var settingsCloseButton = CreateButton(bottomButtonContainer.transform, Localization.Get("UI_Close", "關閉"), () => ToggleSettingsPanel());
+            var settingsCloseText = settingsCloseButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (settingsCloseText != null) _localizedTexts["UI_Close_Settings"] = settingsCloseText;
 
             _settingsPanel = panelObj;
             _settingsPanel.SetActive(false);
@@ -916,10 +941,10 @@ namespace EquipmentSkinSystem
             layout.childForceExpandWidth = true;
 
             // 創建 Log 控制 Toggle
-            CreateLogToggle(contentObj.transform, "調試日誌 (Debug)", "EnableDebugLog");
-            CreateLogToggle(contentObj.transform, "資訊日誌 (Info)", "EnableInfoLog");
-            CreateLogToggle(contentObj.transform, "警告日誌 (Warning)", "EnableWarningLog");
-            CreateLogToggle(contentObj.transform, "錯誤日誌 (Error)", "EnableErrorLog");
+            CreateLogToggle(contentObj.transform, Localization.Get("Log_Debug", "調試日誌 (Debug)"), "EnableDebugLog", "Log_Debug");
+            CreateLogToggle(contentObj.transform, Localization.Get("Log_Info", "資訊日誌 (Info)"), "EnableInfoLog", "Log_Info");
+            CreateLogToggle(contentObj.transform, Localization.Get("Log_Warning", "警告日誌 (Warning)"), "EnableWarningLog", "Log_Warning");
+            CreateLogToggle(contentObj.transform, Localization.Get("Log_Error", "錯誤日誌 (Error)"), "EnableErrorLog", "Log_Error");
 
             return contentObj;
         }
@@ -943,21 +968,28 @@ namespace EquipmentSkinSystem
             layout.childForceExpandWidth = true;
 
             // 語言選項標題
-            TextMeshProUGUI titleText = CreateText(contentObj.transform, "選擇語言", 0);
+            TextMeshProUGUI titleText = CreateText(contentObj.transform, Localization.Get("Language_Select", "選擇語言"), 0);
             titleText.fontSize = 22;
             titleText.fontStyle = FontStyles.Bold;
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 30);
+            _localizedTexts["Language_Select"] = titleText;
 
-            // 目前只有繁體中文
-            CreateLanguageOption(contentObj.transform, "繁體中文", "zh-TW", true);
+            // 語言選項
+            string currentLang = Localization.GetCurrentLanguage();
+            bool isZhTWSelected = currentLang == "zh-TW";
+            bool isEnUSSelected = currentLang == "en-US";
+            
+            CreateLanguageOption(contentObj.transform, Localization.Get("Language_TraditionalChinese", "繁體中文"), "zh-TW", isZhTWSelected);
+            CreateLanguageOption(contentObj.transform, Localization.Get("Language_English", "English"), "en-US", isEnUSSelected);
 
             // 預留空間說明
-            TextMeshProUGUI noteText = CreateText(contentObj.transform, "（其他語言選項將在未來版本中添加）", 0);
+            TextMeshProUGUI noteText = CreateText(contentObj.transform, Localization.Get("Language_Note", "（其他語言選項將在未來版本中添加）"), 0);
             noteText.fontSize = 16;
             noteText.color = new Color(0.7f, 0.7f, 0.7f, 1f);
             noteText.alignment = TextAlignmentOptions.Center;
             noteText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 25);
+            _localizedTexts["Language_Note"] = noteText;
 
             return contentObj;
         }
@@ -978,22 +1010,36 @@ namespace EquipmentSkinSystem
             layout.childForceExpandHeight = true;
             layout.childForceExpandWidth = false;
 
-            // 語言名稱
-            TextMeshProUGUI nameText = CreateText(optionObj.transform, languageName, 0);
-            RectTransform nameRect = nameText.gameObject.GetComponent<RectTransform>();
-            nameRect.sizeDelta = new Vector2(200, 0);
-            nameText.alignment = TextAlignmentOptions.MidlineLeft;
-            nameText.fontSize = 18;
+            // 語言名稱（可點擊）
+            GameObject nameButtonObj = new GameObject("LanguageNameButton");
+            nameButtonObj.transform.SetParent(optionObj.transform, false);
             
-            // 確保文字垂直置中
-            nameRect.anchorMin = new Vector2(0, 0.5f);
-            nameRect.anchorMax = new Vector2(0, 0.5f);
-            nameRect.pivot = new Vector2(0, 0.5f);
+            RectTransform nameButtonRect = nameButtonObj.AddComponent<RectTransform>();
+            nameButtonRect.sizeDelta = new Vector2(300, 40);
+            
+            Button nameButton = nameButtonObj.AddComponent<Button>();
+            ColorBlock nameColors = nameButton.colors;
+            nameColors.normalColor = Color.clear; // 透明背景
+            nameColors.highlightedColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+            nameColors.pressedColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+            nameButton.colors = nameColors;
+            nameButton.onClick.AddListener(() => OnLanguageChanged(languageCode));
 
-            // 選中標記（目前只有一個選項，所以總是選中）
-            if (isSelected)
+            TextMeshProUGUI nameText = CreateText(nameButtonObj.transform, languageName, 0);
+            RectTransform nameRect = nameText.gameObject.GetComponent<RectTransform>();
+            nameRect.sizeDelta = new Vector2(300, 0);
+            nameRect.anchorMin = Vector2.zero;
+            nameRect.anchorMax = Vector2.one;
+            nameText.alignment = TextAlignmentOptions.Center;
+            nameText.fontSize = 18;
+            _localizedTexts[$"Language_{languageCode}"] = nameText;
+
+            // 選中標記
+            bool isCurrentlySelected = Localization.GetCurrentLanguage() == languageCode;
+            if (isCurrentlySelected)
             {
                 TextMeshProUGUI checkText = CreateText(optionObj.transform, "✓", 0);
+                checkText.gameObject.name = "Checkmark"; // 設置名字以便後續查找
                 RectTransform checkRect = checkText.gameObject.GetComponent<RectTransform>();
                 checkRect.sizeDelta = new Vector2(30, 0);
                 checkText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
@@ -1006,6 +1052,104 @@ namespace EquipmentSkinSystem
                 checkRect.anchorMax = new Vector2(1f, 0.5f);
                 checkRect.pivot = new Vector2(0.5f, 0.5f);
             }
+        }
+
+        private void OnLanguageChanged(string languageCode)
+        {
+            try
+            {
+                Localization.SetLanguage(languageCode);
+                Logger.Info($"Language changed to: {languageCode}");
+                
+                // 重新載入 UI 以應用新語言
+                // 注意：這需要重新創建 UI，或者實現動態更新文字的方法
+                // 目前先保存設定，下次打開 UI 時會應用新語言
+                RefreshUIForLanguage();
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Error changing language: {languageCode}", e);
+            }
+        }
+
+        private void RefreshUIForLanguage()
+        {
+            // 簡單的循環更新所有文字
+            foreach (var kvp in _localizedTexts)
+            {
+                if (kvp.Value != null)
+                {
+                    // 特殊處理語言選項名稱
+                    if (kvp.Key.StartsWith("Language_zh-TW"))
+                    {
+                        kvp.Value.text = Localization.Get("Language_TraditionalChinese", "繁體中文");
+                    }
+                    else if (kvp.Key.StartsWith("Language_en-US"))
+                    {
+                        kvp.Value.text = Localization.Get("Language_English", "English");
+                    }
+                    else if (kvp.Key.StartsWith("UI_Clear_"))
+                    {
+                        kvp.Value.text = Localization.Get("UI_Clear", "清空");
+                    }
+                    else if (kvp.Key == "UI_Close_Settings")
+                    {
+                        kvp.Value.text = Localization.Get("UI_Close", "關閉");
+                    }
+                    else
+                    {
+                        kvp.Value.text = Localization.Get(kvp.Key, "");
+                    }
+                }
+            }
+
+            // 更新槽位名稱（動態生成）
+            foreach (var kvp in _slotUIElements)
+            {
+                if (kvp.Value.SlotNameText != null)
+                {
+                    kvp.Value.SlotNameText.text = GetSlotDisplayName(kvp.Key);
+                }
+            }
+
+            // 更新語言選項的選中狀態
+            if (_languageTabContent != null)
+            {
+                string currentLang = Localization.GetCurrentLanguage();
+                
+                foreach (Transform child in _languageTabContent.transform)
+                {
+                    if (child.name.StartsWith("LanguageOption_"))
+                    {
+                        string languageCode = child.name.Replace("LanguageOption_", "");
+                        bool isSelected = currentLang == languageCode;
+                        
+                        // 更新選中標記
+                        var existingCheck = child.Find("Checkmark");
+                        if (existingCheck != null)
+                        {
+                            UnityEngine.Object.Destroy(existingCheck.gameObject);
+                        }
+                        
+                        if (isSelected)
+                        {
+                            TextMeshProUGUI checkText = CreateText(child, "✓", 0);
+                            checkText.gameObject.name = "Checkmark";
+                            RectTransform checkRect = checkText.gameObject.GetComponent<RectTransform>();
+                            checkRect.sizeDelta = new Vector2(30, 0);
+                            checkText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+                            checkText.fontSize = 24;
+                            checkText.fontStyle = FontStyles.Bold;
+                            checkText.alignment = TextAlignmentOptions.Center;
+                            checkRect.anchorMin = new Vector2(1f, 0.5f);
+                            checkRect.anchorMax = new Vector2(1f, 0.5f);
+                            checkRect.pivot = new Vector2(0.5f, 0.5f);
+                        }
+                    }
+                }
+            }
+
+            Logger.Debug("UI text refreshed for new language");
         }
 
         private void SwitchTab(string tabName)
@@ -1041,7 +1185,7 @@ namespace EquipmentSkinSystem
             Logger.Debug($"Switched to tab: {tabName}");
         }
 
-        private void CreateLogToggle(Transform parent, string label, string settingKey)
+        private void CreateLogToggle(Transform parent, string label, string settingKey, string localizationKey)
         {
             GameObject toggleContainer = new GameObject($"LogToggle_{settingKey}");
             toggleContainer.transform.SetParent(parent, false);
@@ -1060,8 +1204,9 @@ namespace EquipmentSkinSystem
             // 標籤文字
             TextMeshProUGUI labelText = CreateText(toggleContainer.transform, label, 0);
             labelText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 0);
-            labelText.alignment = TextAlignmentOptions.MidlineLeft;
+            labelText.alignment = TextAlignmentOptions.MidlineRight;
             labelText.fontSize = 16;
+            _localizedTexts[localizationKey] = labelText;
 
             // Toggle
             GameObject toggleObj = new GameObject("Toggle");
@@ -1069,6 +1214,7 @@ namespace EquipmentSkinSystem
 
             RectTransform toggleRect = toggleObj.AddComponent<RectTransform>();
             toggleRect.sizeDelta = new Vector2(50, 30);
+            toggleRect.anchoredPosition = new Vector2(100, 0); // 按鈕往右平移 20 像素
 
             Toggle toggle = toggleObj.AddComponent<Toggle>();
             
@@ -1172,11 +1318,11 @@ namespace EquipmentSkinSystem
         {
             return slotType switch
             {
-                EquipmentSlotType.Armor => "護甲",
-                EquipmentSlotType.Helmet => "頭盔",
-                EquipmentSlotType.FaceMask => "面罩",
-                EquipmentSlotType.Backpack => "背包",
-                EquipmentSlotType.Headset => "耳機",
+                EquipmentSlotType.Armor => Localization.Get("Slot_Armor", "護甲"),
+                EquipmentSlotType.Helmet => Localization.Get("Slot_Helmet", "頭盔"),
+                EquipmentSlotType.FaceMask => Localization.Get("Slot_FaceMask", "面罩"),
+                EquipmentSlotType.Backpack => Localization.Get("Slot_Backpack", "背包"),
+                EquipmentSlotType.Headset => Localization.Get("Slot_Headset", "耳機"),
                 _ => slotType.ToString()
             };
         }
@@ -1234,11 +1380,11 @@ namespace EquipmentSkinSystem
                     Slot? slot = GetSlotFromController(equipmentController, slotType);
                     if (slot != null && slot.Content != null)
                     {
-                        elements.CurrentEquipmentText.text = $"當前: {slot.Content.TypeID}";
+                        elements.CurrentEquipmentText.text = $"{Localization.Get("UI_Current", "當前: ")}{slot.Content.TypeID}";
                     }
                     else
                     {
-                        elements.CurrentEquipmentText.text = "當前: --";
+                        elements.CurrentEquipmentText.text = Localization.Get("UI_Current", "當前: ") + "--";
                     }
                 }
             }
