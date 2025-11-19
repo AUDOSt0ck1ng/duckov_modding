@@ -95,8 +95,7 @@ namespace EquipmentSkinSystem
             string filePath = ConfigFilePath;
             if (!File.Exists(filePath))
             {
-                // 如果配置文件不存在，創建默認配置
-                CreateDefaultConfig(filePath);
+                // 如果配置文件不存在，直接返回（不創建檔案）
                 return;
             }
 
@@ -146,38 +145,6 @@ namespace EquipmentSkinSystem
             }
         }
 
-        /// <summary>
-        /// 創建或更新配置文件
-        /// </summary>
-        private static void CreateDefaultConfig(string filePath)
-        {
-            try
-            {
-                string directory = Path.GetDirectoryName(filePath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                // 如果文件不存在，創建基本的 Mod 資訊配置
-                // 注意：Log 設定已遷移到 AppSettings，不再使用 info.ini
-                if (!File.Exists(filePath))
-                {
-                    string defaultContent = @"name = EquipmentSkinSystem
-
-displayName = 裝備外觀系統
-
-description = 讓你的角色實際裝備和外觀裝備分離！按 F7 打開管理界面，自由設定每個裝備槽位的外觀。
-";
-                    File.WriteAllText(filePath, defaultContent);
-                    UnityEngine.Debug.Log($"[EquipmentSkinSystem] Created default config file: {filePath}");
-                }
-            }
-            catch (Exception e)
-            {
-                UnityEngine.Debug.LogError($"[EquipmentSkinSystem] Error creating/updating config: {e.Message}");
-            }
-        }
 
         /// <summary>
         /// 重新載入配置（用於運行時更新）
