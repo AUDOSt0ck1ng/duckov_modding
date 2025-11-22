@@ -41,6 +41,18 @@ namespace EquipmentSkinSystem
                 ["UI_Close"] = "關閉",
                 ["UI_Preview"] = "角色預覽",
                 ["UI_SkinID_Placeholder"] = "外觀ID",
+                
+                // 左側裝備清單面板
+                ["UI_EquipmentList"] = "裝備清單",
+                ["UI_FilterByTag"] = "依標籤過濾",
+                ["UI_HideEquipment"] = "不顯示",
+                
+                // Tag 名稱（用於下拉選單顯示）
+                ["Tag_Armor"] = "護甲",
+                ["Tag_Helmat"] = "頭盔",
+                ["Tag_FaceMask"] = "面罩",
+                ["Tag_Backpack"] = "背包",
+                ["Tag_Headset"] = "耳機",
 
                 // 裝備槽位名稱
                 ["Slot_Armor"] = "護甲",
@@ -82,6 +94,18 @@ namespace EquipmentSkinSystem
                 ["UI_Close"] = "Close",
                 ["UI_Preview"] = "Character Preview",
                 ["UI_SkinID_Placeholder"] = "Skin ID",
+                
+                // 左側裝備清單面板
+                ["UI_EquipmentList"] = "Equipment List",
+                ["UI_FilterByTag"] = "Filter by Tag",
+                ["UI_HideEquipment"] = "Hide",
+                
+                // Tag 名稱（用於下拉選單顯示）
+                ["Tag_Armor"] = "Armor",
+                ["Tag_Helmat"] = "Helmet",
+                ["Tag_FaceMask"] = "Face Mask",
+                ["Tag_Backpack"] = "Backpack",
+                ["Tag_Headset"] = "Headset",
 
                 // 裝備槽位名稱
                 ["Slot_Armor"] = "Armor",
@@ -158,6 +182,7 @@ namespace EquipmentSkinSystem
 
         /// <summary>
         /// 設置當前語言
+        /// 注意：物品名稱會自動使用遊戲的 LocalizationManager，不需要手動同步
         /// </summary>
         public static void SetLanguage(string languageCode)
         {

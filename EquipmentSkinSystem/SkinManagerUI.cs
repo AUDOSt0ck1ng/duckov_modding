@@ -33,6 +33,18 @@ namespace EquipmentSkinSystem
         private GameObject? _languageTabContent;
         private string _currentTab = "Log";
         
+        // 裝備選擇面板
+        private GameObject? _equipmentSelectorPanel;
+        private TMP_Dropdown? _tagFilterDropdown;
+        private ScrollRect? _equipmentScrollRect;
+        private GameObject? _equipmentContentContainer;
+        private string _currentSelectedTag = "Armor"; // 預設選擇 Armor
+        
+        // 雙擊檢測
+        private int _lastClickedTypeID = -1;
+        private float _lastClickTime = 0f;
+        private const float DOUBLE_CLICK_TIME = 0.3f; // 雙擊時間間隔（秒）
+        
         // 保存所有需要語言更新的文字元素
         private Dictionary<string, TextMeshProUGUI> _localizedTexts = new Dictionary<string, TextMeshProUGUI>();
         
@@ -140,6 +152,9 @@ namespace EquipmentSkinSystem
 
                 // 創建設定面板（與背景面板同級，覆蓋整個背景面板）
                 CreateSettingsPanel(_uiPanel.transform);
+
+                // 創建裝備選擇面板（左側，與背景面板同級）
+                CreateEquipmentSelectorPanel(_uiPanel.transform);
 
                 _uiPanel.SetActive(false);
 
@@ -469,14 +484,14 @@ namespace EquipmentSkinSystem
                 previewRect.anchoredPosition = new Vector2(200, 0); // 右側，往右移動60（從140改為200）
                 previewRect.pivot = new Vector2(0.5f, 0.5f);
                 
-                // 背景
+                // 背景（使用與左側清單相同的顏色）
                 Image previewBg = previewContainer.AddComponent<Image>();
                 if (_roundedSlotSprite != null)
                 {
                     previewBg.sprite = _roundedSlotSprite;
                     previewBg.type = Image.Type.Sliced;
                 }
-                previewBg.color = new Color(0.08f, 0.12f, 0.18f, 0.9f);
+                previewBg.color = new Color(0.12f, 0.18f, 0.25f, 0.92f); // 與左側清單面板相同的顏色
                 
                 // 標題
                 GameObject titleObj = new GameObject("PreviewTitle");
@@ -1209,6 +1224,644 @@ namespace EquipmentSkinSystem
             _settingsPanel.SetActive(false);
         }
 
+        /// <summary>
+        /// 創建裝備選擇面板（左側）
+        /// </summary>
+        private void CreateEquipmentSelectorPanel(Transform parent)
+        {
+            try
+            {
+                // 創建面板背景
+                GameObject panelObj = new GameObject("EquipmentSelectorPanel");
+                panelObj.transform.SetParent(parent, false);
+
+                RectTransform panelRect = panelObj.AddComponent<RectTransform>();
+                panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                panelRect.sizeDelta = new Vector2(360, 660); // 與背景面板相同高度，寬度 360
+                panelRect.anchoredPosition = new Vector2(-520, 0); // 左側，距離中心 -520（背景面板寬度620/2 + 面板寬度360/2 + 間距50 + 額外調整）
+
+                Image panelImage = panelObj.AddComponent<Image>();
+                if (_roundedSprite != null)
+                {
+                    panelImage.sprite = _roundedSprite;
+                    panelImage.type = Image.Type.Sliced;
+                }
+                panelImage.color = new Color(0.12f, 0.18f, 0.25f, 0.92f);
+
+                // 標題
+                GameObject titleObj = new GameObject("Title");
+                titleObj.transform.SetParent(panelObj.transform, false);
+
+                RectTransform titleRect = titleObj.AddComponent<RectTransform>();
+                titleRect.anchorMin = new Vector2(0.5f, 1f);
+                titleRect.anchorMax = new Vector2(0.5f, 1f);
+                titleRect.sizeDelta = new Vector2(340, 50);
+                titleRect.anchoredPosition = new Vector2(0, -40); // 往下移動 10（從 -30 改為 -40）
+
+                TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
+                titleText.text = Localization.Get("UI_EquipmentList", "裝備清單");
+                _localizedTexts["UI_EquipmentList"] = titleText;
+                titleText.fontSize = 24;
+                titleText.alignment = TextAlignmentOptions.Center;
+                titleText.color = new Color(1f, 0.95f, 0.85f, 1f);
+                titleText.fontStyle = FontStyles.Bold;
+
+                Shadow textShadow = titleObj.AddComponent<Shadow>();
+                textShadow.effectColor = new Color(0, 0, 0, 0.8f);
+                textShadow.effectDistance = new Vector2(2, -2);
+
+                // Tag 過濾器標籤
+                GameObject filterLabelObj = new GameObject("FilterLabel");
+                filterLabelObj.transform.SetParent(panelObj.transform, false);
+
+                RectTransform filterLabelRect = filterLabelObj.AddComponent<RectTransform>();
+                filterLabelRect.anchorMin = new Vector2(0.5f, 1f);
+                filterLabelRect.anchorMax = new Vector2(0.5f, 1f);
+                filterLabelRect.sizeDelta = new Vector2(340, 30);
+                filterLabelRect.anchoredPosition = new Vector2(0, -90);
+
+                TextMeshProUGUI filterLabelText = filterLabelObj.AddComponent<TextMeshProUGUI>();
+                filterLabelText.text = Localization.Get("UI_FilterByTag", "依標籤過濾");
+                _localizedTexts["UI_FilterByTag"] = filterLabelText;
+                filterLabelText.fontSize = 16;
+                filterLabelText.alignment = TextAlignmentOptions.MidlineLeft;
+                filterLabelText.color = new Color(0.9f, 0.9f, 0.9f, 1f);
+
+                // Tag 過濾器下拉選單
+                GameObject dropdownObj = new GameObject("TagFilterDropdown");
+                dropdownObj.transform.SetParent(panelObj.transform, false);
+
+                RectTransform dropdownRect = dropdownObj.AddComponent<RectTransform>();
+                dropdownRect.anchorMin = new Vector2(0.5f, 1f);
+                dropdownRect.anchorMax = new Vector2(0.5f, 1f);
+                dropdownRect.sizeDelta = new Vector2(340, 40);
+                dropdownRect.anchoredPosition = new Vector2(0, -130);
+
+                Image dropdownImage = dropdownObj.AddComponent<Image>();
+                if (_roundedButtonSprite != null)
+                {
+                    dropdownImage.sprite = _roundedButtonSprite;
+                    dropdownImage.type = Image.Type.Sliced;
+                }
+                dropdownImage.color = new Color(0.2f, 0.25f, 0.3f, 1f);
+
+                TMP_Dropdown dropdown = dropdownObj.AddComponent<TMP_Dropdown>();
+                
+                // 設置選項（裝備相關的標籤）- 使用本地化文字
+                // 順序：頭盔、護甲、面罩、耳機、背包
+                dropdown.options.Clear();
+                dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Helmat", "Helmat")));      // 頭盔
+                dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Armor", "Armor")));        // 護甲
+                dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_FaceMask", "FaceMask")));  // 面罩
+                dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Headset", "Headset")));    // 耳機
+                dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Backpack", "Backpack")));  // 背包
+                dropdown.value = 1; // 預設選擇護甲（索引 1）
+                
+                // 保存下拉選單的原始標籤名稱（用於查詢），對應到顯示文字
+                // 注意：dropdown.options 中存的是顯示文字，但我們需要原始標籤名稱來查詢物品
+
+                // 創建標籤文字
+                GameObject labelObj = new GameObject("Label");
+                labelObj.transform.SetParent(dropdownObj.transform, false);
+                RectTransform labelRect = labelObj.AddComponent<RectTransform>();
+                labelRect.anchorMin = Vector2.zero;
+                labelRect.anchorMax = Vector2.one;
+                labelRect.sizeDelta = Vector2.zero;
+                labelRect.offsetMin = new Vector2(10, 0);
+                labelRect.offsetMax = new Vector2(-25, 0);
+
+                TextMeshProUGUI labelText = labelObj.AddComponent<TextMeshProUGUI>();
+                labelText.text = Localization.Get("Tag_Armor", "Armor"); // 使用本地化文字（預設顯示護甲）
+                _localizedTexts["TagFilterDropdown_Label"] = labelText; // 添加到本地化字典
+                labelText.fontSize = 16;
+                labelText.alignment = TextAlignmentOptions.MidlineLeft;
+                labelText.color = Color.white;
+                dropdown.captionText = labelText;
+
+                // 創建箭頭
+                GameObject arrowObj = new GameObject("Arrow");
+                arrowObj.transform.SetParent(dropdownObj.transform, false);
+                RectTransform arrowRect = arrowObj.AddComponent<RectTransform>();
+                arrowRect.anchorMin = new Vector2(1f, 0.5f);
+                arrowRect.anchorMax = new Vector2(1f, 0.5f);
+                arrowRect.sizeDelta = new Vector2(20, 20);
+                arrowRect.anchoredPosition = new Vector2(-10, 0);
+
+                TextMeshProUGUI arrowText = arrowObj.AddComponent<TextMeshProUGUI>();
+                arrowText.text = "▼";
+                arrowText.fontSize = 12;
+                arrowText.alignment = TextAlignmentOptions.Center;
+                arrowText.color = Color.white;
+                dropdown.captionImage = null;
+
+                // 創建模板（下拉列表）
+                GameObject templateObj = new GameObject("Template");
+                templateObj.transform.SetParent(dropdownObj.transform, false);
+                templateObj.SetActive(false);
+
+                RectTransform templateRect = templateObj.AddComponent<RectTransform>();
+                templateRect.anchorMin = new Vector2(0f, 1f);
+                templateRect.anchorMax = new Vector2(1f, 1f);
+                templateRect.pivot = new Vector2(0.5f, 1f);
+                templateRect.sizeDelta = new Vector2(0, 500); // 增加高度以容納所有選項（5個選項 * 40 + 額外空間 + 60）
+                templateRect.anchoredPosition = new Vector2(0, -2);
+
+                Image templateImage = templateObj.AddComponent<Image>();
+                templateImage.color = new Color(0.12f, 0.18f, 0.25f, 0.95f); // 稍微亮一點，與面板背景一致
+
+                ScrollRect templateScroll = templateObj.AddComponent<ScrollRect>();
+                templateScroll.horizontal = false;
+                templateScroll.vertical = true;
+                templateScroll.movementType = ScrollRect.MovementType.Clamped; // 限制滾動範圍
+
+                // 內容區域
+                GameObject contentObj = new GameObject("Content");
+                contentObj.transform.SetParent(templateObj.transform, false);
+                RectTransform contentRect = contentObj.AddComponent<RectTransform>();
+                contentRect.anchorMin = new Vector2(0f, 1f);
+                contentRect.anchorMax = new Vector2(1f, 1f);
+                contentRect.pivot = new Vector2(0.5f, 1f);
+                // 設置固定高度，確保有足夠空間顯示所有選項和底部間距
+                contentRect.sizeDelta = new Vector2(0, 60); // 5個選項 * 40 + 底部空間 60
+                contentRect.anchoredPosition = Vector2.zero;
+
+                VerticalLayoutGroup contentLayout = contentObj.AddComponent<VerticalLayoutGroup>();
+                contentLayout.childControlHeight = false;
+                contentLayout.childControlWidth = true;
+                contentLayout.childForceExpandWidth = true;
+                contentLayout.childForceExpandHeight = false;
+                contentLayout.spacing = 0;
+                // 添加底部 padding 來增加底部空間
+                contentLayout.padding = new RectOffset(0, 0, 0, 60); // 底部 padding 60
+
+                // 移除 ContentSizeFitter，使用固定高度
+                // ContentSizeFitter contentFitter = contentObj.AddComponent<ContentSizeFitter>();
+                // contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                templateScroll.content = contentRect;
+
+                // 滾動條
+                GameObject scrollbarObj = new GameObject("Scrollbar");
+                scrollbarObj.transform.SetParent(templateObj.transform, false);
+                RectTransform scrollbarRect = scrollbarObj.AddComponent<RectTransform>();
+                scrollbarRect.anchorMin = new Vector2(1f, 0f);
+                scrollbarRect.anchorMax = new Vector2(1f, 1f);
+                scrollbarRect.sizeDelta = new Vector2(10, 0);
+                scrollbarRect.anchoredPosition = Vector2.zero;
+
+                Image scrollbarImage = scrollbarObj.AddComponent<Image>();
+                scrollbarImage.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+
+                Scrollbar scrollbar = scrollbarObj.AddComponent<Scrollbar>();
+                scrollbar.direction = Scrollbar.Direction.BottomToTop;
+
+                GameObject slidingArea = new GameObject("Sliding Area");
+                slidingArea.transform.SetParent(scrollbarObj.transform, false);
+                RectTransform slidingRect = slidingArea.AddComponent<RectTransform>();
+                slidingRect.anchorMin = Vector2.zero;
+                slidingRect.anchorMax = Vector2.one;
+                slidingRect.sizeDelta = Vector2.zero;
+                slidingRect.offsetMin = new Vector2(0, 0);
+                slidingRect.offsetMax = new Vector2(0, 0);
+
+                GameObject handle = new GameObject("Handle");
+                handle.transform.SetParent(slidingArea.transform, false);
+                RectTransform handleRect = handle.AddComponent<RectTransform>();
+                handleRect.anchorMin = new Vector2(0f, 0f);
+                handleRect.anchorMax = new Vector2(1f, 1f);
+                handleRect.sizeDelta = Vector2.zero;
+
+                Image handleImage = handle.AddComponent<Image>();
+                handleImage.color = new Color(0.4f, 0.4f, 0.4f, 1f);
+
+                scrollbar.handleRect = handleRect;
+                scrollbar.targetGraphic = handleImage;
+                scrollbar.direction = Scrollbar.Direction.BottomToTop;
+
+                templateScroll.verticalScrollbar = scrollbar;
+
+                // 選項項目模板
+                GameObject itemObj = new GameObject("Item");
+                itemObj.transform.SetParent(contentObj.transform, false);
+                RectTransform itemRect = itemObj.AddComponent<RectTransform>();
+                itemRect.anchorMin = new Vector2(0f, 1f);
+                itemRect.anchorMax = new Vector2(1f, 1f);
+                itemRect.pivot = new Vector2(0.5f, 1f);
+                itemRect.sizeDelta = new Vector2(0, 40);
+                itemRect.anchoredPosition = Vector2.zero;
+
+                Image itemImage = itemObj.AddComponent<Image>();
+                itemImage.color = new Color(0.2f, 0.25f, 0.3f, 1f);
+
+                Toggle itemToggle = itemObj.AddComponent<Toggle>();
+                itemToggle.targetGraphic = itemImage;
+                
+                // 設置 Toggle 的顏色塊，確保文字清晰可見
+                ColorBlock toggleColors = itemToggle.colors;
+                toggleColors.normalColor = new Color(0.2f, 0.25f, 0.3f, 1f);
+                toggleColors.highlightedColor = new Color(0.35f, 0.4f, 0.45f, 1f);
+                toggleColors.pressedColor = new Color(0.15f, 0.2f, 0.25f, 1f);
+                toggleColors.selectedColor = new Color(0.3f, 0.35f, 0.4f, 1f);
+                toggleColors.disabledColor = new Color(0.1f, 0.1f, 0.1f, 1f);
+                itemToggle.colors = toggleColors;
+
+                GameObject itemLabelObj = new GameObject("Item Label");
+                itemLabelObj.transform.SetParent(itemObj.transform, false);
+                RectTransform itemLabelRect = itemLabelObj.AddComponent<RectTransform>();
+                itemLabelRect.anchorMin = Vector2.zero;
+                itemLabelRect.anchorMax = Vector2.one;
+                itemLabelRect.sizeDelta = Vector2.zero;
+                itemLabelRect.offsetMin = new Vector2(10, 0);
+                itemLabelRect.offsetMax = new Vector2(-10, 0);
+
+                TextMeshProUGUI itemLabelText = itemLabelObj.AddComponent<TextMeshProUGUI>();
+                itemLabelText.fontSize = 16;
+                itemLabelText.alignment = TextAlignmentOptions.MidlineLeft;
+                itemLabelText.color = new Color(1f, 1f, 1f, 1f); // 確保是純白色
+                itemLabelText.fontStyle = FontStyles.Normal;
+
+                // 不要將文字設為 graphic，這樣文字顏色不會被 Toggle 狀態影響
+                // itemToggle.graphic = itemLabelText;
+
+                dropdown.itemText = itemLabelText;
+                dropdown.itemImage = itemImage;
+                dropdown.template = templateRect;
+
+                // 添加值變更監聽
+                // 注意：需要將顯示文字映射回原始標籤名稱
+                // 順序對應下拉選單：頭盔、護甲、面罩、耳機、背包
+                string[] tagNames = { "Helmat", "Armor", "FaceMask", "Headset", "Backpack" };
+                dropdown.onValueChanged.AddListener((index) => {
+                    _currentSelectedTag = tagNames[index]; // 使用原始標籤名稱，不是顯示文字
+                    // 更新顯示文字（本地化）
+                    if (labelText != null)
+                    {
+                        labelText.text = dropdown.options[index].text;
+                    }
+                    RefreshEquipmentList();
+                });
+
+                _tagFilterDropdown = dropdown;
+
+                // 裝備列表 ScrollView
+                GameObject scrollViewObj = new GameObject("EquipmentScrollView");
+                scrollViewObj.transform.SetParent(panelObj.transform, false);
+
+                RectTransform scrollRect = scrollViewObj.AddComponent<RectTransform>();
+                scrollRect.anchorMin = new Vector2(0.5f, 0f);
+                scrollRect.anchorMax = new Vector2(0.5f, 1f);
+                scrollRect.sizeDelta = new Vector2(340, 0);
+                scrollRect.offsetMin = new Vector2(-170, 50); // 底部留空間
+                scrollRect.offsetMax = new Vector2(170, -180); // 頂部留空間給標題和過濾器
+
+                Image scrollBg = scrollViewObj.AddComponent<Image>();
+                if (_roundedSlotSprite != null)
+                {
+                    scrollBg.sprite = _roundedSlotSprite;
+                    scrollBg.type = Image.Type.Sliced;
+                }
+                scrollBg.color = new Color(0.08f, 0.12f, 0.18f, 0.7f);
+
+                Mask mask = scrollViewObj.AddComponent<Mask>();
+                mask.showMaskGraphic = true;
+
+                ScrollRect scrollComponent = scrollViewObj.AddComponent<ScrollRect>();
+                scrollComponent.horizontal = false;
+                scrollComponent.vertical = true;
+                scrollComponent.movementType = ScrollRect.MovementType.Clamped;
+
+                // 內容容器
+                GameObject equipmentContentObj = new GameObject("Content");
+                equipmentContentObj.transform.SetParent(scrollViewObj.transform, false);
+
+                RectTransform equipmentContentRect = equipmentContentObj.AddComponent<RectTransform>();
+                equipmentContentRect.anchorMin = new Vector2(0.5f, 1f);
+                equipmentContentRect.anchorMax = new Vector2(0.5f, 1f);
+                equipmentContentRect.pivot = new Vector2(0.5f, 1f);
+                equipmentContentRect.sizeDelta = new Vector2(320, 0);
+
+                VerticalLayoutGroup equipmentLayout = equipmentContentObj.AddComponent<VerticalLayoutGroup>();
+                equipmentLayout.childControlHeight = false;
+                equipmentLayout.childControlWidth = true;
+                equipmentLayout.childForceExpandWidth = true;
+                equipmentLayout.childForceExpandHeight = false;
+                equipmentLayout.spacing = 5;
+                equipmentLayout.padding = new RectOffset(5, 5, 5, 5);
+
+                ContentSizeFitter equipmentFitter = equipmentContentObj.AddComponent<ContentSizeFitter>();
+                equipmentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                scrollComponent.content = equipmentContentRect;
+                _equipmentScrollRect = scrollComponent;
+                _equipmentContentContainer = equipmentContentObj;
+
+                _equipmentSelectorPanel = panelObj;
+                // 注意：面板預設為 false，會在 ShowUI 時啟用
+                _equipmentSelectorPanel.SetActive(false);
+
+                // 初始載入裝備列表（即使面板未顯示也先載入）
+                RefreshEquipmentList();
+                
+                Logger.Debug($"Equipment selector panel created at position {panelRect.anchoredPosition}, size {panelRect.sizeDelta}");
+
+                Logger.Debug("Equipment selector panel created");
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to create equipment selector panel", e);
+            }
+        }
+
+        /// <summary>
+        /// 刷新裝備列表（根據選中的 Tag）
+        /// </summary>
+        private void RefreshEquipmentList()
+        {
+            try
+            {
+                if (_equipmentContentContainer == null)
+                {
+                    Logger.Warning("Equipment content container is null");
+                    return;
+                }
+
+                // 清除現有項目
+                foreach (Transform child in _equipmentContentContainer.transform)
+                {
+                    UnityEngine.Object.Destroy(child.gameObject);
+                }
+
+                // 首先添加「不顯示」選項
+                CreateHideOptionItem(_equipmentContentContainer.transform);
+
+                // 取得符合標籤的裝備
+                var itemInfos = ItemInfoProvider.Instance.GetItemsByTag(_currentSelectedTag);
+                
+                Logger.Debug($"Found {itemInfos.Count} items with tag '{_currentSelectedTag}'");
+
+                // 創建裝備項目
+                foreach (var itemInfo in itemInfos)
+                {
+                    CreateEquipmentItem(_equipmentContentContainer.transform, itemInfo);
+                }
+
+                // 更新 ScrollView 內容大小
+                if (_equipmentScrollRect != null)
+                {
+                    Canvas.ForceUpdateCanvases();
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to refresh equipment list", e);
+            }
+        }
+
+        /// <summary>
+        /// 創建「不顯示」選項項目
+        /// </summary>
+        private void CreateHideOptionItem(Transform parent)
+        {
+            try
+            {
+                GameObject itemObj = new GameObject("HideOptionItem");
+                itemObj.transform.SetParent(parent, false);
+
+                RectTransform itemRect = itemObj.AddComponent<RectTransform>();
+                itemRect.sizeDelta = new Vector2(0, 60);
+
+                Image itemImage = itemObj.AddComponent<Image>();
+                if (_roundedSlotSprite != null)
+                {
+                    itemImage.sprite = _roundedSlotSprite;
+                    itemImage.type = Image.Type.Sliced;
+                }
+                itemImage.color = new Color(0.15f, 0.2f, 0.25f, 0.8f);
+
+                // 不顯示圖示（留空）
+
+                // 文字標籤
+                GameObject textObj = new GameObject("Text");
+                textObj.transform.SetParent(itemObj.transform, false);
+
+                RectTransform textRect = textObj.AddComponent<RectTransform>();
+                textRect.anchorMin = new Vector2(0f, 0.5f);
+                textRect.anchorMax = new Vector2(1f, 0.5f);
+                textRect.sizeDelta = new Vector2(0, 40);
+                textRect.offsetMin = new Vector2(90, 0);
+                textRect.offsetMax = new Vector2(-10, 0);
+
+                TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+                text.text = Localization.Get("UI_HideEquipment", "不顯示") + "\n<size=12><color=#888>ID: -1</color></size>";
+                _localizedTexts["UI_HideEquipment"] = text;
+                text.fontSize = 16;
+                text.alignment = TextAlignmentOptions.MidlineLeft;
+                text.color = Color.white;
+
+                // 添加按鈕功能
+                Button itemButton = itemObj.AddComponent<Button>();
+                ColorBlock buttonColors = itemButton.colors;
+                buttonColors.normalColor = new Color(0.15f, 0.2f, 0.25f, 0.8f);
+                buttonColors.highlightedColor = new Color(0.25f, 0.3f, 0.35f, 1f);
+                buttonColors.pressedColor = new Color(0.1f, 0.15f, 0.2f, 1f);
+                itemButton.colors = buttonColors;
+
+                itemButton.onClick.AddListener(() => {
+                    OnEquipmentItemClicked(-1);
+                });
+                
+                // 添加雙擊檢測組件
+                EquipmentItemDoubleClickHandler doubleClickHandler = itemObj.AddComponent<EquipmentItemDoubleClickHandler>();
+                doubleClickHandler.Initialize(-1, this);
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to create hide option item", e);
+            }
+        }
+
+        /// <summary>
+        /// 創建單個裝備項目
+        /// </summary>
+        private void CreateEquipmentItem(Transform parent, ItemInfo itemInfo)
+        {
+            try
+            {
+                GameObject itemObj = new GameObject($"EquipmentItem_{itemInfo.TypeID}");
+                itemObj.transform.SetParent(parent, false);
+
+                RectTransform itemRect = itemObj.AddComponent<RectTransform>();
+                itemRect.sizeDelta = new Vector2(0, 60);
+
+                Image itemImage = itemObj.AddComponent<Image>();
+                if (_roundedSlotSprite != null)
+                {
+                    itemImage.sprite = _roundedSlotSprite;
+                    itemImage.type = Image.Type.Sliced;
+                }
+                itemImage.color = new Color(0.15f, 0.2f, 0.25f, 0.8f);
+
+                // 裝備圖示
+                GameObject iconObj = new GameObject("Icon");
+                iconObj.transform.SetParent(itemObj.transform, false);
+
+                RectTransform iconRect = iconObj.AddComponent<RectTransform>();
+                iconRect.anchorMin = new Vector2(0f, 0.5f);
+                iconRect.anchorMax = new Vector2(0f, 0.5f);
+                iconRect.sizeDelta = new Vector2(50, 50);
+                iconRect.anchoredPosition = new Vector2(30, 0);
+
+                Image iconImage = iconObj.AddComponent<Image>();
+                if (itemInfo.MetaData.icon != null)
+                {
+                    iconImage.sprite = itemInfo.MetaData.icon;
+                }
+                else
+                {
+                    iconImage.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+                }
+
+                // 裝備名稱和 ID
+                GameObject textObj = new GameObject("Text");
+                textObj.transform.SetParent(itemObj.transform, false);
+
+                RectTransform textRect = textObj.AddComponent<RectTransform>();
+                textRect.anchorMin = new Vector2(0f, 0.5f);
+                textRect.anchorMax = new Vector2(1f, 0.5f);
+                textRect.sizeDelta = new Vector2(0, 40);
+                textRect.offsetMin = new Vector2(90, 0);
+                textRect.offsetMax = new Vector2(-10, 0);
+
+                TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+                text.text = $"{itemInfo.MetaData.DisplayName}\n<size=12><color=#888>ID: {itemInfo.TypeID}</color></size>";
+                text.fontSize = 16;
+                text.alignment = TextAlignmentOptions.MidlineLeft;
+                text.color = Color.white;
+
+                // 添加按鈕功能（點擊後填入對應槽位的輸入框）
+                Button itemButton = itemObj.AddComponent<Button>();
+                ColorBlock buttonColors = itemButton.colors;
+                buttonColors.normalColor = new Color(0.15f, 0.2f, 0.25f, 0.8f);
+                buttonColors.highlightedColor = new Color(0.25f, 0.3f, 0.35f, 1f);
+                buttonColors.pressedColor = new Color(0.1f, 0.15f, 0.2f, 1f);
+                itemButton.colors = buttonColors;
+
+                int typeID = itemInfo.TypeID; // 捕獲變數
+                itemButton.onClick.AddListener(() => {
+                    OnEquipmentItemClicked(typeID);
+                });
+                
+                // 添加雙擊檢測組件
+                EquipmentItemDoubleClickHandler doubleClickHandler = itemObj.AddComponent<EquipmentItemDoubleClickHandler>();
+                doubleClickHandler.Initialize(typeID, this);
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to create equipment item for TypeID {itemInfo.TypeID}", e);
+            }
+        }
+
+        /// <summary>
+        /// 裝備項目點擊處理（單擊）
+        /// </summary>
+        private void OnEquipmentItemClicked(int typeID)
+        {
+            try
+            {
+                Logger.Debug($"Equipment item clicked: TypeID {typeID}");
+                // 單擊時不做任何事，只記錄用於雙擊檢測
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to handle equipment item click for TypeID {typeID}", e);
+            }
+        }
+
+        /// <summary>
+        /// 裝備項目雙擊處理
+        /// </summary>
+        public void OnEquipmentItemDoubleClicked(int typeID)
+        {
+            try
+            {
+                Logger.Debug($"Equipment item double-clicked: TypeID {typeID}, Current Tag: {_currentSelectedTag}");
+                
+                // 根據當前選中的 Tag 判斷應該填入哪個槽位
+                EquipmentSlotType? targetSlotType = GetSlotTypeFromTag(_currentSelectedTag);
+                if (!targetSlotType.HasValue)
+                {
+                    Logger.Warning($"Unknown tag: {_currentSelectedTag}, cannot determine slot type");
+                    return;
+                }
+                
+                // 檢查槽位是否存在
+                if (!_slotUIElements.ContainsKey(targetSlotType.Value))
+                {
+                    Logger.Warning($"Slot UI element not found for: {targetSlotType.Value}");
+                    return;
+                }
+                
+                var slotElements = _slotUIElements[targetSlotType.Value];
+                
+                // 填入輸入框（-1 表示隱藏）
+                if (typeID == -1)
+                {
+                    slotElements.SkinItemInput.text = "-1";
+                }
+                else
+                {
+                    slotElements.SkinItemInput.text = typeID.ToString();
+                }
+                
+                // 觸發變更事件（這會自動更新配置並觸發預覽）
+                OnSkinItemChanged(targetSlotType.Value, slotElements.SkinItemInput.text);
+                
+                // 確保啟用外觀（如果還沒啟用的話）
+                var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
+                if (profile != null && profile.SlotConfigs != null && profile.SlotConfigs.ContainsKey(targetSlotType.Value))
+                {
+                    if (!profile.SlotConfigs[targetSlotType.Value].UseSkin)
+                    {
+                        profile.SlotConfigs[targetSlotType.Value].UseSkin = true;
+                        slotElements.UseSkinToggle.isOn = true;
+                    }
+                }
+                
+                // 觸發預覽更新
+                RefreshAllEquipment();
+                UpdatePreview();
+                
+                Logger.Info($"Applied equipment TypeID {typeID} to slot {targetSlotType.Value}");
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to handle equipment item double-click for TypeID {typeID}", e);
+            }
+        }
+
+        /// <summary>
+        /// 根據 Tag 名稱取得對應的 EquipmentSlotType
+        /// </summary>
+        private EquipmentSlotType? GetSlotTypeFromTag(string tagName)
+        {
+            switch (tagName)
+            {
+                case "Armor":
+                    return EquipmentSlotType.Armor;
+                case "Helmat":
+                    return EquipmentSlotType.Helmet;
+                case "FaceMask":
+                    return EquipmentSlotType.FaceMask;
+                case "Backpack":
+                    return EquipmentSlotType.Backpack;
+                case "Headset":
+                    return EquipmentSlotType.Headset;
+                default:
+                    return null;
+            }
+        }
+
         private Button CreateTabButton(Transform parent, string label, string tabName)
         {
             GameObject buttonObj = new GameObject($"{tabName}TabButton");
@@ -1469,6 +2122,37 @@ namespace EquipmentSkinSystem
                 }
             }
 
+            // 更新 Tag 過濾器下拉選單的選項和顯示文字
+            if (_tagFilterDropdown != null)
+            {
+                // 保存當前選中的索引
+                int currentIndex = _tagFilterDropdown.value;
+                
+                // 更新選項文字（順序：頭盔、護甲、面罩、耳機、背包）
+                _tagFilterDropdown.options.Clear();
+                _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Helmat", "Helmat")));      // 頭盔
+                _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Armor", "Armor")));        // 護甲
+                _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_FaceMask", "FaceMask")));  // 面罩
+                _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Headset", "Headset")));    // 耳機
+                _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Backpack", "Backpack")));  // 背包
+                
+                // 恢復選中狀態
+                _tagFilterDropdown.value = currentIndex;
+                
+                // 更新當前顯示的文字
+                if (currentIndex >= 0 && currentIndex < _tagFilterDropdown.options.Count)
+                {
+                    if (_tagFilterDropdown.captionText != null)
+                    {
+                        _tagFilterDropdown.captionText.text = _tagFilterDropdown.options[currentIndex].text;
+                    }
+                }
+            }
+
+            // 刷新裝備列表，讓物品名稱根據當前語言更新
+            // ItemMetaData.DisplayName 使用遊戲的 LocalizationManager，會自動根據遊戲語言返回對應文字
+            RefreshEquipmentList();
+
             // 更新語言選項的選中狀態
             if (_languageTabContent != null)
             {
@@ -1656,17 +2340,25 @@ namespace EquipmentSkinSystem
                 
                 if (_isSettingsPanelVisible)
                 {
-                    // 顯示設定面板，隱藏主面板
+                    // 顯示設定面板，隱藏主面板和裝備選擇面板
                     _settingsPanel.SetActive(true);
                     _backgroundPanel.SetActive(false);
-                    Logger.Debug("Settings panel opened, main panel hidden");
+                    if (_equipmentSelectorPanel != null)
+                    {
+                        _equipmentSelectorPanel.SetActive(false);
+                    }
+                    Logger.Debug("Settings panel opened, main panel and equipment selector panel hidden");
                 }
                 else
                 {
-                    // 隱藏設定面板，顯示主面板
+                    // 隱藏設定面板，顯示主面板和裝備選擇面板
                     _settingsPanel.SetActive(false);
                     _backgroundPanel.SetActive(true);
-                    Logger.Debug("Settings panel closed, main panel shown");
+                    if (_equipmentSelectorPanel != null)
+                    {
+                        _equipmentSelectorPanel.SetActive(true);
+                    }
+                    Logger.Debug("Settings panel closed, main panel and equipment selector panel shown");
                 }
             }
         }
@@ -1812,6 +2504,12 @@ namespace EquipmentSkinSystem
                     Logger.Debug("ShowUI - Reset to main panel");
                 }
                 
+                // 顯示裝備選擇面板
+                if (_equipmentSelectorPanel != null)
+                {
+                    _equipmentSelectorPanel.SetActive(true);
+                }
+                
                 // 確保載入最新配置
                 Logger.Debug("ShowUI - Loading config...");
                 DataPersistence.LoadConfig();
@@ -1861,6 +2559,12 @@ namespace EquipmentSkinSystem
             if (_uiPanel != null)
             {
                 _uiPanel.SetActive(false);
+                
+                // 隱藏裝備選擇面板
+                if (_equipmentSelectorPanel != null)
+                {
+                    _equipmentSelectorPanel.SetActive(false);
+                }
                 
                 // 停用預覽
                 if (_characterPreview != null)
