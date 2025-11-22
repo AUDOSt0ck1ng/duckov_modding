@@ -95,7 +95,7 @@ namespace EquipmentSkinSystem
                     {
                         // ID > 0：使用設定的外觀 ID（即使沒有裝備也渲染）
                         Logger.Debug($"Rendering skin {config.SkinItemTypeID} for {slotType.Value}");
-                        RenderEquipment(config.SkinItemTypeID, socket);
+                        RenderEquipment(config.SkinItemTypeID, socket, slot);
                         RefreshFacialFeaturesIfNeeded(slot, __instance);
                         return false;
                     }
@@ -106,7 +106,7 @@ namespace EquipmentSkinSystem
                         {
                             // 使用原始裝備的 ID 作為外觀（總是套用造型系統）
                             Logger.Debug($"Rendering original equipment ID {slot.Content.TypeID} as skin for {slotType.Value}");
-                            RenderEquipment(slot.Content.TypeID, socket);
+                            RenderEquipment(slot.Content.TypeID, socket, slot);
                             RefreshFacialFeaturesIfNeeded(slot, __instance);
                             return false;
                         }
@@ -210,29 +210,88 @@ namespace EquipmentSkinSystem
                 var headsetConfig = GetSlotConfig(EquipmentSlotType.Headset, characterType);
                 var faceMaskConfig = GetSlotConfig(EquipmentSlotType.FaceMask, characterType);
 
-                // 找到面部的 socket（通過 characterModel.FaceMaskSocket 屬性取得）
+                // 取得正確的 socket（頭盔和耳機使用 helmatSocket，面部使用 faceMaskSocket）
                 var cm = Traverse.Create(controller).Field("characterMainControl").GetValue<CharacterMainControl>();
+                Transform helmatSocket = null;
                 Transform faceMaskSocket = null;
                 if (cm != null && cm.characterModel != null)
                 {
-                    faceMaskSocket = cm.characterModel.FaceMaskSocket;
+                    helmatSocket = cm.characterModel.HelmatSocket;  // 頭盔和耳機使用這個 socket
+                    faceMaskSocket = cm.characterModel.FaceMaskSocket;  // 面部使用這個 socket
+                }
+                
+                // 如果無法取得 helmatSocket，使用傳入的 socket 作為備用
+                if (helmatSocket == null)
+                {
+                    helmatSocket = socket;
                 }
 
                 Logger.Debug($"[RenderHelmetHeadsetFaceMaskSlots] Current slot type: {currentSlotType}, currentSlot: {currentSlot != null}, currentSlot.Key: {currentSlot?.Key}, currentSlot.Content: {currentSlot?.Content != null}");
                 Logger.Debug($"[RenderHelmetHeadsetFaceMaskSlots] FaceMask: slot={faceMaskSlot != null}, slot.Key: {faceMaskSlot?.Key}, content={faceMaskSlot?.Content != null}, content.TypeID: {faceMaskSlot?.Content?.TypeID}, socket={faceMaskSocket != null}, UseSkin={faceMaskConfig.UseSkin}");
 
                 // 重要：先清空所有相關的 socket，避免殘留模型
-                // 清空頭盔/耳機的 socket
-                ClearEntireSocket(socket);
-                // 清空面部的 socket
-                ClearEntireSocket(faceMaskSocket);
+                // 清空頭盔/耳機的 socket（使用正確的 helmatSocket）
+                ClearEntireSocket(helmatSocket);
+                // 清空面部的 socket（只有在 faceMaskSocket 與 helmatSocket 不同時才需要）
+                if (faceMaskSocket != null && faceMaskSocket != helmatSocket)
+                {
+                    ClearEntireSocket(faceMaskSocket);
+                }
 
                 // 按照 耳機->頭盔->面部 的順序渲染
+                // 注意：頭盔和耳機共用 helmatSocket，所以需要檢查是否需要同時渲染
+
+                // 檢查頭盔和耳機是否都需要渲染
+                bool shouldRenderHeadset = false;
+                bool shouldRenderHelmet = false;
+                
+                Slot headsetSlotToUse = currentSlotType == EquipmentSlotType.Headset ? currentSlot : headsetSlot;
+                Slot helmetSlotToUse = currentSlotType == EquipmentSlotType.Helmet ? currentSlot : helmatSlot;
+                
+                // 檢查耳機是否需要渲染
+                if (headsetSlotToUse != null)
+                {
+                    if (headsetSlotToUse.Content != null)
+                    {
+                        if (headsetConfig.UseSkin)
+                        {
+                            shouldRenderHeadset = (headsetConfig.SkinItemTypeID != -1);
+                        }
+                        else
+                        {
+                            shouldRenderHeadset = true;
+                        }
+                    }
+                    else if (headsetConfig.UseSkin && headsetConfig.SkinItemTypeID > 0)
+                    {
+                        shouldRenderHeadset = true;
+                    }
+                }
+                
+                // 檢查頭盔是否需要渲染
+                if (helmetSlotToUse != null)
+                {
+                    if (helmetSlotToUse.Content != null)
+                    {
+                        if (helmatConfig.UseSkin)
+                        {
+                            shouldRenderHelmet = (helmatConfig.SkinItemTypeID != -1);
+                        }
+                        else
+                        {
+                            shouldRenderHelmet = true;
+                        }
+                    }
+                    else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID > 0)
+                    {
+                        shouldRenderHelmet = true;
+                    }
+                }
 
                 // 1. 渲染耳機
-                // 優先使用當前觸發的 slot（如果它是 Headset），否則使用從 controller 取得的 headsetSlot
-                Slot headsetSlotToUse = currentSlotType == EquipmentSlotType.Headset ? currentSlot : headsetSlot;
-                if (headsetSlotToUse != null)
+                // 第一個渲染的裝備清空 socket，第二個不清空（如果兩個都需要渲染）
+                bool clearSocketForHeadset = !shouldRenderHelmet;  // 如果頭盔不需要渲染，清空 socket
+                if (shouldRenderHeadset && headsetSlotToUse != null)
                 {
                     if (headsetSlotToUse.Content != null)
                     {
@@ -247,33 +306,33 @@ namespace EquipmentSkinSystem
                             else if (headsetConfig.SkinItemTypeID > 0)
                             {
                                 Logger.Debug($"Rendering headset skin {headsetConfig.SkinItemTypeID}");
-                                RenderEquipment(headsetConfig.SkinItemTypeID, socket);
+                                RenderEquipment(headsetConfig.SkinItemTypeID, helmatSocket, headsetSlotToUse, clearSocketForHeadset);
                             }
                             else
                             {
                                 Logger.Debug($"Rendering original headset {headsetSlotToUse.Content.TypeID}");
-                                RenderEquipment(headsetSlotToUse.Content.TypeID, socket);
+                                RenderEquipment(headsetSlotToUse.Content.TypeID, helmatSocket, headsetSlotToUse, clearSocketForHeadset);
                             }
                         }
                         else
                         {
                             // 非啟用：渲染原始裝備（不套用造型ID）
                             Logger.Debug($"Rendering actual headset {headsetSlotToUse.Content.TypeID} (UseSkin=false)");
-                            RenderEquipment(headsetSlotToUse.Content.TypeID, socket);
+                            RenderEquipment(headsetSlotToUse.Content.TypeID, helmatSocket, headsetSlotToUse, clearSocketForHeadset);
                         }
                     }
                     else if (headsetConfig.UseSkin && headsetConfig.SkinItemTypeID > 0)
                     {
                         // 沒有裝備但啟用了外觀且設定了外觀 ID：渲染外觀
                         Logger.Debug($"Rendering headset skin {headsetConfig.SkinItemTypeID} (no equipment)");
-                        RenderEquipment(headsetConfig.SkinItemTypeID, socket);
+                        RenderEquipment(headsetConfig.SkinItemTypeID, helmatSocket, headsetSlotToUse, clearSocketForHeadset);
                     }
                 }
 
                 // 2. 渲染頭盔
-                // 優先使用當前觸發的 slot（如果它是 Helmet），否則使用從 controller 取得的 helmatSlot
-                Slot helmetSlotToUse = currentSlotType == EquipmentSlotType.Helmet ? currentSlot : helmatSlot;
-                if (helmetSlotToUse != null)
+                // 如果耳機已經渲染了，不清空 socket（讓頭盔和耳機同時顯示）
+                bool clearSocketForHelmet = !shouldRenderHeadset;  // 如果耳機不需要渲染，清空 socket
+                if (shouldRenderHelmet && helmetSlotToUse != null)
                 {
                     if (helmetSlotToUse.Content != null)
                     {
@@ -288,26 +347,26 @@ namespace EquipmentSkinSystem
                             else if (helmatConfig.SkinItemTypeID > 0)
                             {
                                 Logger.Debug($"Rendering helmet skin {helmatConfig.SkinItemTypeID}");
-                                RenderEquipment(helmatConfig.SkinItemTypeID, socket);
+                                RenderEquipment(helmatConfig.SkinItemTypeID, helmatSocket, helmetSlotToUse, clearSocketForHelmet);
                             }
                             else
                             {
                                 Logger.Debug($"Rendering original helmet {helmetSlotToUse.Content.TypeID}");
-                                RenderEquipment(helmetSlotToUse.Content.TypeID, socket);
+                                RenderEquipment(helmetSlotToUse.Content.TypeID, helmatSocket, helmetSlotToUse, clearSocketForHelmet);
                             }
                         }
                         else
                         {
                             // 非啟用：渲染原始裝備（不套用造型ID）
                             Logger.Debug($"Rendering actual helmet {helmetSlotToUse.Content.TypeID} (UseSkin=false)");
-                            RenderEquipment(helmetSlotToUse.Content.TypeID, socket);
+                            RenderEquipment(helmetSlotToUse.Content.TypeID, helmatSocket, helmetSlotToUse, clearSocketForHelmet);
                         }
                     }
                     else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID > 0)
                     {
                         // 沒有裝備但啟用了外觀且設定了外觀 ID：渲染外觀
                         Logger.Debug($"Rendering helmet skin {helmatConfig.SkinItemTypeID} (no equipment)");
-                        RenderEquipment(helmatConfig.SkinItemTypeID, socket);
+                        RenderEquipment(helmatConfig.SkinItemTypeID, helmatSocket, helmetSlotToUse, clearSocketForHelmet);
                     }
                 }
 
@@ -331,6 +390,9 @@ namespace EquipmentSkinSystem
                     }
                     else
                     {
+                        // 如果 faceMaskSocket 和 helmatSocket 是同一個，渲染面部時不清空 socket（避免清掉頭盔）
+                        bool shouldClearSocket = (faceMaskSocket != helmatSocket);
+                        
                         if (faceMaskSlotToUse.Content != null)
                         {
                             // 有裝備：根據配置渲染
@@ -344,26 +406,26 @@ namespace EquipmentSkinSystem
                                 else if (faceMaskConfig.SkinItemTypeID > 0)
                                 {
                                     Logger.Debug($"Rendering face mask skin {faceMaskConfig.SkinItemTypeID}");
-                                    RenderEquipment(faceMaskConfig.SkinItemTypeID, faceMaskSocket);
+                                    RenderEquipment(faceMaskConfig.SkinItemTypeID, faceMaskSocket, faceMaskSlotToUse, shouldClearSocket);
                                 }
                                 else
                                 {
                                     Logger.Debug($"Rendering original face mask {faceMaskSlotToUse.Content.TypeID}");
-                                    RenderEquipment(faceMaskSlotToUse.Content.TypeID, faceMaskSocket);
+                                    RenderEquipment(faceMaskSlotToUse.Content.TypeID, faceMaskSocket, faceMaskSlotToUse, shouldClearSocket);
                                 }
                             }
                             else
                             {
                                 // 非啟用：渲染原始裝備（不套用造型ID）
                                 Logger.Debug($"Rendering actual face mask {faceMaskSlotToUse.Content.TypeID} (UseSkin=false)");
-                                RenderEquipment(faceMaskSlotToUse.Content.TypeID, faceMaskSocket);
+                                RenderEquipment(faceMaskSlotToUse.Content.TypeID, faceMaskSocket, faceMaskSlotToUse, shouldClearSocket);
                             }
                         }
                         else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID > 0)
                         {
                             // 沒有裝備但啟用了外觀且設定了外觀 ID：渲染外觀
                             Logger.Debug($"Rendering face mask skin {faceMaskConfig.SkinItemTypeID} (no equipment)");
-                            RenderEquipment(faceMaskConfig.SkinItemTypeID, faceMaskSocket);
+                            RenderEquipment(faceMaskConfig.SkinItemTypeID, faceMaskSocket, faceMaskSlotToUse, shouldClearSocket);
                         }
                     }
                 }
@@ -400,32 +462,124 @@ namespace EquipmentSkinSystem
             /// <summary>
             /// 渲染裝備（統一方法，根據 TypeID 渲染）
             /// </summary>
-            private static void RenderEquipment(int itemTypeID, Transform socket)
+            /// <param name="itemTypeID">要渲染的物品 ID（外觀 ID）</param>
+            /// <param name="socket">要掛載的 socket</param>
+            /// <param name="actualSlot">實際裝備的 slot（如果有，Agent 會綁定到此 slot.Content 以保持功能正常）</param>
+            /// <param name="clearSocket">是否清空 socket（預設為 true，當多個裝備共用同一個 socket 時設為 false）</param>
+            private static void RenderEquipment(int itemTypeID, Transform socket, Slot actualSlot = null, bool clearSocket = true)
             {
-                Item item = ItemAssetsCollection.InstantiateSync(itemTypeID);
-                if (item == null)
+                // 先清除 socket 上的現有物件（如果需要的話）
+                if (clearSocket)
                 {
-                    Logger.Warning($"Failed to instantiate item {itemTypeID}");
-                    return;
+                    ClearEntireSocket(socket);
                 }
+                
+                ItemAgent agent = null;
 
-                ItemAgent agent = item.AgentUtilities.CreateAgent(
-                    CharacterEquipmentController.equipmentModelHash,
-                    ItemAgent.AgentTypes.equipment
-                );
+                // 如果有實際裝備的 slot，使用 slot.Content 的 Agent Prefab（保持功能正常）
+                if (actualSlot != null && actualSlot.Content != null)
+                {
+                    // 使用 slot.Content 的 Agent Prefab 創建 Agent（保持功能）
+                    // 這樣 selfAgent.Item 會指向原本的 Item，功能組件（如 SoulCollector）才能正常工作
+                    agent = actualSlot.Content.AgentUtilities.CreateAgent(
+                        CharacterEquipmentController.equipmentModelHash,
+                        ItemAgent.AgentTypes.equipment
+                    );
+                    
+                    if (agent == null)
+                    {
+                        Logger.Warning($"Failed to create agent for item {actualSlot.Content.TypeID}");
+                        return;
+                    }
+                    
+                    // 如果外觀 ID 與實際裝備 ID 不同，替換視覺模型
+                    if (itemTypeID != actualSlot.Content.TypeID)
+                    {
+                        ReplaceAgentVisualModel(agent, itemTypeID);
+                    }
+                }
+                else
+                {
+                    // 沒有實際裝備，使用外觀 Item 的 Prefab（僅視覺）
+                    Item tempItem = ItemAssetsCollection.InstantiateSync(itemTypeID);
+                    if (tempItem != null)
+                    {
+                        agent = tempItem.AgentUtilities.CreateAgent(
+                            CharacterEquipmentController.equipmentModelHash,
+                            ItemAgent.AgentTypes.equipment
+                        );
+                    }
+                }
 
                 if (agent != null)
                 {
                     agent.transform.SetParent(socket, worldPositionStays: false);
                     agent.transform.localRotation = Quaternion.identity;
                     agent.transform.localPosition = Vector3.zero;
-                    Logger.Debug($"Rendered equipment {itemTypeID}");
-                }
-                else
-                {
-                    GameObject.Destroy(item.gameObject);
                 }
             }
+
+            /// <summary>
+            /// 替換 Agent 的視覺模型為外觀 Item 的模型
+            /// 保留功能組件（如 SoulCollector），只替換視覺
+            /// </summary>
+            private static void ReplaceAgentVisualModel(ItemAgent agent, int skinItemTypeID)
+            {
+                try
+                {
+                    // 創建外觀 Item 來獲取視覺模型
+                    Item skinItem = ItemAssetsCollection.InstantiateSync(skinItemTypeID);
+                    if (skinItem == null)
+                    {
+                        Logger.Warning($"Failed to instantiate skin item {skinItemTypeID}");
+                        return;
+                    }
+
+                    ItemAgent skinAgentPrefab = skinItem.AgentUtilities.GetPrefab(CharacterEquipmentController.equipmentModelHash);
+                    if (skinAgentPrefab == null)
+                    {
+                        Logger.Warning($"Failed to get skin agent prefab for item {skinItemTypeID}");
+                        GameObject.Destroy(skinItem.gameObject);
+                        return;
+                    }
+
+                    // 實例化外觀 Agent 來獲取視覺模型
+                    ItemAgent skinAgent = UnityEngine.Object.Instantiate(skinAgentPrefab);
+                    
+                    // 隱藏原本的視覺子物件（保留功能組件在 agent 根物件上）
+                    var originalRenderers = agent.GetComponentsInChildren<Renderer>(true);
+                    foreach (var renderer in originalRenderers)
+                    {
+                        // 只隱藏視覺子物件，不隱藏 agent 根物件上的組件
+                        if (renderer.transform != agent.transform)
+                        {
+                            renderer.enabled = false;
+                        }
+                    }
+                    
+                    // 複製外觀 Agent 的所有視覺子物件
+                    foreach (Transform skinChild in skinAgent.transform)
+                    {
+                        // 跳過可能包含功能組件的子物件
+                        if (skinChild.name.Contains("Collider") || skinChild.name.Contains("Trigger"))
+                        {
+                            continue;
+                        }
+                        
+                        var clonedChild = UnityEngine.Object.Instantiate(skinChild.gameObject, agent.transform);
+                        clonedChild.name = skinChild.name;
+                    }
+                    
+                    // 銷毀臨時物件
+                    GameObject.Destroy(skinAgent.gameObject);
+                    GameObject.Destroy(skinItem.gameObject);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"Error replacing agent visual model: {e.Message}", e);
+                }
+            }
+
 
             /// <summary>
             /// 如果是頭盔或面罩，刷新嘴巴與耳機顯示
