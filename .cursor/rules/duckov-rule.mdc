@@ -25,5 +25,23 @@ alwaysApply: true
 4. **日誌與除錯**
    - 關鍵流程（載入設定、保存設定、Harmony patch、即時渲染）必須寫出清楚日誌並附 Slot/ID 等資訊，方便快速對照是否有進度。
 
+5. **Slot 與裝備渲染系統**
+   - **Slot 結構**：`Slot` 包含 `Key`（槽位類型字串）和 `Content`（當前裝備的 Item，可能為 null）。Slot 在 `SetItem()` 時已初始化，會一直存在。
+   - **Slot 取得方式**：必須透過 `Traverse.Create(controller).Field("xxxSlot").GetValue<Slot>()` 取得，因為 Slot 是 `CharacterEquipmentController` 的私有字段。
+   - **Slot.Key 映射**：`"Armor"` → Armor, `"Helmat"` → Helmet（注意遊戲拼錯），`"FaceMask"` → FaceMask, `"Backpack"` → Backpack, `"Headset"` → Headset。**必須使用 `slot.Key` 判斷槽位類型，不要依賴其他標識**。
+   - **Socket 取得方式**：
+     - `ArmorSocket`、`HelmatSocket`、`BackpackSocket` 是 `CharacterModel` 的字段，可直接取得。
+     - **`FaceMaskSocket` 是屬性，不是字段**：必須透過 `characterModel.FaceMaskSocket` 取得，它會返回 `faceSocket`（如果存在）或 `helmatSocket`（備用）。**絕對不要用 `Traverse.Field("faceMaskSocket")` 取得**。
+     - `Headset` 與 `Helmet` 共用同一個 `HelmatSocket`。
+   - **Slot 使用邏輯**：
+     - 當觸發的是目標槽位時，優先使用 `currentSlot`（最準確）。
+     - 當觸發的是其他槽位時，使用從 controller 取得的對應 Slot（例如 `faceMaskSlot`）。
+     - 檢查 `slot.Content != null` 來判斷是否有裝備。
+     - 使用 `slot.Content.TypeID` 來渲染裝備。
+   - **常見錯誤**：
+     - ❌ 將 `FaceMaskSocket` 當作字段取得 → ✅ 透過 `characterModel.FaceMaskSocket` 屬性取得
+     - ❌ 只依賴 `currentSlotType` 判斷槽位 → ✅ 使用 `slot.Key` 判斷（更準確）
+     - ❌ 假設 `slot` 為 null → ✅ Slot 已初始化，但 `slot.Content` 可能為 null
+
 請將以上內容視為「內建 prompt」，任何新指示都需要符合此規範後再執行。若遇到新坑，務必更新本文件。記得：**寧可多花 5 分鐘查文件，也不要亂試造成整體功能倒退。**
 
