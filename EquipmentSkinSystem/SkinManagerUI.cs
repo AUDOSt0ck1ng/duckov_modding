@@ -35,6 +35,14 @@ namespace EquipmentSkinSystem
         
         // 保存所有需要語言更新的文字元素
         private Dictionary<string, TextMeshProUGUI> _localizedTexts = new Dictionary<string, TextMeshProUGUI>();
+        
+        // 保存所有需要語言更新的 placeholder 文字元素
+        private Dictionary<string, TextMeshProUGUI> _localizedPlaceholders = new Dictionary<string, TextMeshProUGUI>();
+        
+        // 角色預覽系統
+        private CharacterPreview? _characterPreview;
+        private RawImage? _previewImage;
+        private Slider? _previewHeightSlider;
 
         private class SlotUIElements
         {
@@ -48,7 +56,31 @@ namespace EquipmentSkinSystem
 
         public void Initialize()
         {
+            // 先初始化預覽系統（因為 UI 需要引用它）
+            InitializePreview();
+            // 然後創建 UI（UI 中會使用預覽系統）
             CreateUI();
+        }
+        
+        /// <summary>
+        /// 初始化角色預覽系統
+        /// </summary>
+        private void InitializePreview()
+        {
+            try
+            {
+                // 創建預覽 GameObject
+                GameObject previewObj = new GameObject("CharacterPreview");
+                previewObj.transform.SetParent(transform);
+                _characterPreview = previewObj.AddComponent<CharacterPreview>();
+                _characterPreview.Initialize();
+                
+                Logger.Debug("Character preview initialized");
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to initialize character preview", e);
+            }
         }
 
         /// <summary>
@@ -96,6 +128,9 @@ namespace EquipmentSkinSystem
 
                 // 創建角色切換按鈕
                 CreateCharacterToggle(_backgroundPanel.transform);
+
+                // 創建角色預覽視窗
+                CreatePreviewWindow(_backgroundPanel.transform);
 
                 // 創建槽位列表
                 CreateSlotList(_backgroundPanel.transform);
@@ -308,6 +343,10 @@ namespace EquipmentSkinSystem
                 // 切換角色類型
                 EquipmentSkinDataManager.Instance.SetCurrentCharacterType(newType);
                 
+                // 立即保存 CurrentCharacterType，確保切換標籤時就保存狀態
+                DataPersistence.SaveConfig();
+                Logger.Debug($"CurrentCharacterType saved: {newType}");
+                
                 // 更新按鈕顏色狀態
                 UpdateCharacterButtonColors();
                 
@@ -319,6 +358,34 @@ namespace EquipmentSkinSystem
                 
                 // 刷新裝備渲染
                 RefreshAllEquipment();
+                
+                // 切換角色時重置相機
+                if (_characterPreview != null)
+                {
+                    _characterPreview.SetPreviewCharacter(newType, resetCamera: true);
+                    
+                    // 更新預覽圖像
+                    if (_previewImage != null && _characterPreview.PreviewTexture != null)
+                    {
+                        _previewImage.texture = _characterPreview.PreviewTexture;
+                        
+                        // 確保拖曳控制器已設置預覽引用
+                        PreviewDragController? dragController = _previewImage.GetComponent<PreviewDragController>();
+                        if (dragController != null)
+                        {
+                            dragController.SetCharacterPreview(_characterPreview);
+                        }
+                    }
+                    
+                    // 更新高度滑桿
+                    if (_previewHeightSlider != null)
+                    {
+                        _characterPreview.GetCameraHeightRange(out float min, out float max);
+                        _previewHeightSlider.minValue = min;
+                        _previewHeightSlider.maxValue = max;
+                        _previewHeightSlider.value = _characterPreview.GetCameraHeight();
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -378,7 +445,274 @@ namespace EquipmentSkinSystem
                 }
             }
             
+            // 更新預覽
+            UpdatePreview();
+            
             Logger.Debug($"UI refreshed for {EquipmentSkinDataManager.Instance.CurrentCharacterType}");
+        }
+        
+        /// <summary>
+        /// 創建角色預覽視窗
+        /// </summary>
+        private void CreatePreviewWindow(Transform parent)
+        {
+            try
+            {
+                // 創建預覽容器（右側）
+                GameObject previewContainer = new GameObject("PreviewContainer");
+                previewContainer.transform.SetParent(parent, false);
+                
+                RectTransform previewRect = previewContainer.AddComponent<RectTransform>();
+                previewRect.anchorMin = new Vector2(1f, 0.5f);
+                previewRect.anchorMax = new Vector2(1f, 0.5f);
+                previewRect.sizeDelta = new Vector2(340, 400); // 寬度從310增加到340（再加大30）
+                previewRect.anchoredPosition = new Vector2(200, 0); // 右側，往右移動60（從140改為200）
+                previewRect.pivot = new Vector2(0.5f, 0.5f);
+                
+                // 背景
+                Image previewBg = previewContainer.AddComponent<Image>();
+                if (_roundedSlotSprite != null)
+                {
+                    previewBg.sprite = _roundedSlotSprite;
+                    previewBg.type = Image.Type.Sliced;
+                }
+                previewBg.color = new Color(0.08f, 0.12f, 0.18f, 0.9f);
+                
+                // 標題
+                GameObject titleObj = new GameObject("PreviewTitle");
+                titleObj.transform.SetParent(previewContainer.transform, false);
+                
+                RectTransform titleRect = titleObj.AddComponent<RectTransform>();
+                titleRect.anchorMin = new Vector2(0.5f, 1f);
+                titleRect.anchorMax = new Vector2(0.5f, 1f);
+                titleRect.sizeDelta = new Vector2(320, 30); // 寬度從290增加到320（配合面板寬度）
+                titleRect.anchoredPosition = new Vector2(0, -20); // 往上移動20（從-40改為-20）
+                
+                TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
+                titleText.text = Localization.Get("UI_Preview", "角色預覽");
+                _localizedTexts["UI_Preview"] = titleText;
+                titleText.fontSize = 20;
+                titleText.alignment = TextAlignmentOptions.Center;
+                titleText.color = new Color(1f, 0.95f, 0.85f, 1f);
+                titleText.fontStyle = FontStyles.Bold;
+                
+                // 預覽圖像容器
+                GameObject imageContainer = new GameObject("PreviewImageContainer");
+                imageContainer.transform.SetParent(previewContainer.transform, false);
+                
+                RectTransform imageRect = imageContainer.AddComponent<RectTransform>();
+                imageRect.anchorMin = new Vector2(0.5f, 0.5f);
+                imageRect.anchorMax = new Vector2(0.5f, 0.5f);
+                imageRect.sizeDelta = new Vector2(320, 350); // 寬度從290增加到320（配合面板寬度）
+                imageRect.anchoredPosition = new Vector2(0, -20);
+                
+                // 預覽圖像背景
+                Image imageBg = imageContainer.AddComponent<Image>();
+                imageBg.color = new Color(0.05f, 0.05f, 0.1f, 1f);
+                
+                // 預覽 RawImage
+                GameObject previewImageObj = new GameObject("PreviewImage");
+                previewImageObj.transform.SetParent(imageContainer.transform, false);
+                
+                RectTransform previewImageRect = previewImageObj.AddComponent<RectTransform>();
+                previewImageRect.anchorMin = Vector2.zero;
+                previewImageRect.anchorMax = Vector2.one;
+                previewImageRect.sizeDelta = Vector2.zero;
+                previewImageRect.offsetMin = new Vector2(5, 5);
+                previewImageRect.offsetMax = new Vector2(-5, -5);
+                
+                _previewImage = previewImageObj.AddComponent<RawImage>();
+                _previewImage.color = Color.white;
+                _previewImage.raycastTarget = true; // 啟用射線檢測，以便接收滑鼠事件
+                
+                // 添加拖曳控制器
+                PreviewDragController dragController = previewImageObj.AddComponent<PreviewDragController>();
+                // 設置預覽引用（此時 _characterPreview 應該已經初始化）
+                if (_characterPreview != null)
+                {
+                    dragController.SetCharacterPreview(_characterPreview);
+                }
+                else
+                {
+                    Logger.Warning("CharacterPreview is null when creating drag controller, will set later");
+                }
+                
+                // 創建高度調整滑桿（垂直，在預覽圖像右側）
+                CreateHeightSlider(imageContainer.transform);
+                
+                Logger.Debug("Preview window created with drag controller and height slider");
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to create preview window", e);
+            }
+        }
+        
+        /// <summary>
+        /// 創建高度調整滑桿
+        /// </summary>
+        private void CreateHeightSlider(Transform parent)
+        {
+            try
+            {
+                // 創建滑桿容器
+                GameObject sliderObj = new GameObject("HeightSlider");
+                sliderObj.transform.SetParent(parent, false);
+                
+                RectTransform sliderRect = sliderObj.AddComponent<RectTransform>();
+                sliderRect.anchorMin = new Vector2(1f, 0f);
+                sliderRect.anchorMax = new Vector2(1f, 1f);
+                sliderRect.sizeDelta = new Vector2(20, 0);
+                sliderRect.anchoredPosition = new Vector2(10, 0); // 在右側，稍微偏右
+                
+                // 創建滑桿背景
+                GameObject backgroundObj = new GameObject("Background");
+                backgroundObj.transform.SetParent(sliderObj.transform, false);
+                
+                RectTransform bgRect = backgroundObj.AddComponent<RectTransform>();
+                bgRect.anchorMin = Vector2.zero;
+                bgRect.anchorMax = Vector2.one;
+                bgRect.sizeDelta = Vector2.zero;
+                bgRect.offsetMin = new Vector2(0, 10);
+                bgRect.offsetMax = new Vector2(0, -10);
+                
+                Image bgImage = backgroundObj.AddComponent<Image>();
+                bgImage.color = new Color(0.2f, 0.2f, 0.25f, 0.8f);
+                
+                // 創建填充區域
+                GameObject fillAreaObj = new GameObject("Fill Area");
+                fillAreaObj.transform.SetParent(sliderObj.transform, false);
+                
+                RectTransform fillAreaRect = fillAreaObj.AddComponent<RectTransform>();
+                fillAreaRect.anchorMin = Vector2.zero;
+                fillAreaRect.anchorMax = Vector2.one;
+                fillAreaRect.sizeDelta = Vector2.zero;
+                fillAreaRect.offsetMin = new Vector2(0, 10);
+                fillAreaRect.offsetMax = new Vector2(0, -10);
+                
+                GameObject fillObj = new GameObject("Fill");
+                fillObj.transform.SetParent(fillAreaObj.transform, false);
+                
+                RectTransform fillRect = fillObj.AddComponent<RectTransform>();
+                fillRect.anchorMin = new Vector2(0, 0);
+                fillRect.anchorMax = new Vector2(1, 1);
+                fillRect.sizeDelta = Vector2.zero;
+                
+                Image fillImage = fillObj.AddComponent<Image>();
+                fillImage.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f); // 使用主題色
+                
+                // 創建滑塊（Handle）
+                GameObject handleAreaObj = new GameObject("Handle Slide Area");
+                handleAreaObj.transform.SetParent(sliderObj.transform, false);
+                
+                RectTransform handleAreaRect = handleAreaObj.AddComponent<RectTransform>();
+                handleAreaRect.anchorMin = Vector2.zero;
+                handleAreaRect.anchorMax = Vector2.one;
+                handleAreaRect.sizeDelta = Vector2.zero;
+                handleAreaRect.offsetMin = new Vector2(0, 10);
+                handleAreaRect.offsetMax = new Vector2(0, -10);
+                
+                GameObject handleObj = new GameObject("Handle");
+                handleObj.transform.SetParent(handleAreaObj.transform, false);
+                
+                RectTransform handleRect = handleObj.AddComponent<RectTransform>();
+                handleRect.anchorMin = new Vector2(0, 0.5f);
+                handleRect.anchorMax = new Vector2(1, 0.5f);
+                handleRect.sizeDelta = new Vector2(0, 20);
+                handleRect.anchoredPosition = Vector2.zero;
+                
+                Image handleImage = handleObj.AddComponent<Image>();
+                handleImage.color = new Color(157f/255f, 220f/255f, 235f/255f, 1f); // 亮藍色
+                
+                // 創建 Slider 組件
+                Slider slider = sliderObj.AddComponent<Slider>();
+                slider.fillRect = fillRect;
+                slider.handleRect = handleRect;
+                slider.targetGraphic = handleImage;
+                slider.direction = Slider.Direction.BottomToTop; // 從下到上（0在底部，1在頂部）
+                
+                // 設置範圍（稍後在 UpdatePreview 中設置）
+                if (_characterPreview != null)
+                {
+                    _characterPreview.GetCameraHeightRange(out float min, out float max);
+                    slider.minValue = min;
+                    slider.maxValue = max;
+                    slider.value = _characterPreview.GetCameraHeight();
+                }
+                else
+                {
+                    slider.minValue = 0.2f;
+                    slider.maxValue = 1.5f;
+                    slider.value = 0.6f;
+                }
+                
+                // 添加值變更監聽
+                slider.onValueChanged.AddListener((value) => {
+                    if (_characterPreview != null)
+                    {
+                        _characterPreview.SetCameraHeight(value);
+                    }
+                });
+                
+                _previewHeightSlider = slider;
+                
+                Logger.Debug("Height slider created");
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to create height slider", e);
+            }
+        }
+        
+        /// <summary>
+        /// 更新預覽
+        /// </summary>
+        private void UpdatePreview()
+        {
+            try
+            {
+                if (_characterPreview == null)
+                {
+                    Logger.Warning("Character preview is null");
+                    return;
+                }
+                
+                // 根據當前選中的角色類型來設置預覽
+                var currentType = EquipmentSkinDataManager.Instance.CurrentCharacterType;
+                Logger.Debug($"UpdatePreview - Current character type from manager: {currentType}");
+                
+                // 直接設置預覽（角色應該已經在場景中）
+                // 不重置相機，保持用戶調整的角度
+                _characterPreview.SetPreviewCharacter(currentType, resetCamera: false);
+                
+                // 更新預覽圖像
+                if (_previewImage != null && _characterPreview.PreviewTexture != null)
+                {
+                    _previewImage.texture = _characterPreview.PreviewTexture;
+                    
+                    // 確保拖曳控制器已設置預覽引用
+                    PreviewDragController? dragController = _previewImage.GetComponent<PreviewDragController>();
+                    if (dragController != null)
+                    {
+                        dragController.SetCharacterPreview(_characterPreview);
+                    }
+                }
+                
+                // 更新高度滑桿
+                if (_previewHeightSlider != null)
+                {
+                    _characterPreview.GetCameraHeightRange(out float min, out float max);
+                    _previewHeightSlider.minValue = min;
+                    _previewHeightSlider.maxValue = max;
+                    _previewHeightSlider.value = _characterPreview.GetCameraHeight();
+                }
+                
+                Logger.Debug($"Preview updated for {currentType}");
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Failed to update preview", e);
+            }
         }
 
         private void CreateSlotList(Transform parent)
@@ -489,7 +823,7 @@ namespace EquipmentSkinSystem
             elements.CurrentEquipmentText.fontSize = 14;
 
             // 外觀裝備輸入框
-            elements.SkinItemInput = CreateInputField(slotObj.transform, "外觀ID", 150, (value) => OnSkinItemChanged(slotType, value));
+            elements.SkinItemInput = CreateInputField(slotObj.transform, Localization.Get("UI_SkinID_Placeholder", "外觀ID"), 150, (value) => OnSkinItemChanged(slotType, value), $"UI_SkinID_Placeholder_{slotType}");
 
             // 清空按鈕（最右邊）
             elements.ClearButton = CreateButton(slotObj.transform, Localization.Get("UI_Clear", "清空"), () => OnClearSlotClicked(slotType));
@@ -579,7 +913,7 @@ namespace EquipmentSkinSystem
             return toggle;
         }
 
-        private TMP_InputField CreateInputField(Transform parent, string placeholder, float width, Action<string> onValueChanged)
+        private TMP_InputField CreateInputField(Transform parent, string placeholder, float width, Action<string> onValueChanged, string? placeholderKey = null)
         {
             GameObject inputObj = new GameObject($"Input_{placeholder}");
             inputObj.transform.SetParent(parent, false);
@@ -642,6 +976,12 @@ namespace EquipmentSkinSystem
             placeholderText.fontSize = 14;
             placeholderText.color = new Color(0.5f, 0.5f, 0.5f, 1f);
             placeholderText.alignment = TextAlignmentOptions.Center;
+            
+            // 如果提供了 placeholderKey，保存到字典中以便語言切換時更新
+            if (!string.IsNullOrEmpty(placeholderKey))
+            {
+                _localizedPlaceholders[placeholderKey] = placeholderText;
+            }
 
             inputField.textViewport = textAreaRect;
             inputField.textComponent = textComponent;
@@ -723,7 +1063,7 @@ namespace EquipmentSkinSystem
             RectTransform rect = buttonContainer.AddComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0f);
             rect.anchorMax = new Vector2(0.5f, 0f);
-            rect.sizeDelta = new Vector2(400, 60);
+            rect.sizeDelta = new Vector2(480, 60); // 寬度從430增加到480（再拉寬50）
             rect.anchoredPosition = new Vector2(0, 60); // 提高位置避免重疊
 
             HorizontalLayoutGroup layout = buttonContainer.AddComponent<HorizontalLayoutGroup>();
@@ -1102,6 +1442,23 @@ namespace EquipmentSkinSystem
                     }
                 }
             }
+            
+            // 更新所有 placeholder 文字
+            foreach (var kvp in _localizedPlaceholders)
+            {
+                if (kvp.Value != null)
+                {
+                    // 處理 placeholder key（例如 "UI_SkinID_Placeholder_Armor"）
+                    if (kvp.Key.StartsWith("UI_SkinID_Placeholder_"))
+                    {
+                        kvp.Value.text = Localization.Get("UI_SkinID_Placeholder", "外觀ID");
+                    }
+                    else
+                    {
+                        kvp.Value.text = Localization.Get(kvp.Key, "");
+                    }
+                }
+            }
 
             // 更新槽位名稱（動態生成）
             foreach (var kvp in _slotUIElements)
@@ -1459,6 +1816,14 @@ namespace EquipmentSkinSystem
                 Logger.Debug("ShowUI - Loading config...");
                 DataPersistence.LoadConfig();
                 
+                // 載入配置後，立即獲取當前角色類型（這應該已經從配置文件恢復）
+                var currentTypeAfterLoad = EquipmentSkinDataManager.Instance.CurrentCharacterType;
+                Logger.Info($"ShowUI - CurrentCharacterType after LoadConfig: {currentTypeAfterLoad} (Player=0, Pet=1)");
+                
+                // 重要：同步按鈕顏色狀態，確保按鈕顯示的狀態和 CurrentCharacterType 一致
+                // 這必須在 RefreshUI() 之前調用，因為按鈕顏色應該反映當前選中的角色
+                UpdateCharacterButtonColors();
+                
                 // 顯示當前配置狀態
                 var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
                 Logger.Debug($"ShowUI - Current profile: {profile?.ProfileName}");
@@ -1472,6 +1837,16 @@ namespace EquipmentSkinSystem
                 }
                 
                 RefreshUI();
+                
+                // 啟用預覽（根據當前選中的角色類型來設置）
+                // 重要：必須在 LoadConfig() 和 UpdateCharacterButtonColors() 之後調用
+                if (_characterPreview != null)
+                {
+                    _characterPreview.EnablePreview();
+                    // 根據當前選中的角色類型來更新預覽（應該和按鈕狀態一致）
+                    Logger.Debug($"ShowUI - Setting preview for current character type: {currentTypeAfterLoad}");
+                    UpdatePreview();
+                }
                 
                 // 使用遊戲的輸入管理系統（和物品欄一樣的方式）
                 InputManager.DisableInput(_uiPanel);
@@ -1487,10 +1862,19 @@ namespace EquipmentSkinSystem
             {
                 _uiPanel.SetActive(false);
                 
+                // 停用預覽
+                if (_characterPreview != null)
+                {
+                    _characterPreview.DisablePreview();
+                }
+                
+                // 關閉面板時觸發重新渲染，確保所有變更都應用到遊戲中
+                RefreshAllEquipment();
+                
                 // 恢復輸入
                 InputManager.ActiveInput(_uiPanel);
                 
-                Logger.Debug("UI closed - Input restored");
+                Logger.Debug("UI closed - Input restored, equipment refreshed");
             }
         }
 
@@ -1552,6 +1936,7 @@ namespace EquipmentSkinSystem
                     
                     // 立即應用變更（觸發全身重新渲染）
                     RefreshAllEquipment();
+                    UpdatePreview();
                 }
                 else
                 {
@@ -1586,6 +1971,7 @@ namespace EquipmentSkinSystem
                     if (profile.SlotConfigs[slotType].UseSkin)
                     {
                         RefreshAllEquipment();
+                        UpdatePreview();
                     }
                 }
                 else if (int.TryParse(value, out int itemID))
@@ -1597,6 +1983,8 @@ namespace EquipmentSkinSystem
                     if (profile.SlotConfigs[slotType].UseSkin)
                     {
                         RefreshAllEquipment();
+                        // 更新預覽
+                        UpdatePreview();
                     }
                 }
             }
@@ -1739,8 +2127,11 @@ namespace EquipmentSkinSystem
                 Logger.Error("Failed to save config", e);
             }
             
-            // 立即應用所有槽位的設定（全身重新渲染）
+                // 立即應用所有槽位的設定（全身重新渲染）
             RefreshAllEquipment();
+            
+            // 更新預覽
+            UpdatePreview();
             
             Logger.Info("Configuration applied!");
             

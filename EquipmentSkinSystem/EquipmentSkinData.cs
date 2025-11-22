@@ -330,10 +330,18 @@ namespace EquipmentSkinSystem
                     if (json.Contains("\"PlayerProfile\"") && json.Contains("\"PetProfile\""))
                     {
                         // 新格式：分別載入玩家和狗的配置
+                        // 重要：必須先恢復 CurrentCharacterType，因為後面的 CurrentProfile 會用到它
                         var charTypeMatch = System.Text.RegularExpressions.Regex.Match(json, @"""CurrentCharacterType"":\s*(\d+)");
                         if (charTypeMatch.Success)
                         {
-                            _currentCharacterType = (CharacterType)int.Parse(charTypeMatch.Groups[1].Value);
+                            int charTypeValue = int.Parse(charTypeMatch.Groups[1].Value);
+                            _currentCharacterType = (CharacterType)charTypeValue;
+                            Logger.Info($"LoadFromJson - Restored CurrentCharacterType: {_currentCharacterType} (value: {charTypeValue})");
+                        }
+                        else
+                        {
+                            Logger.Warning($"LoadFromJson - CurrentCharacterType not found in JSON, keeping default: {_currentCharacterType}");
+                            Logger.Warning($"LoadFromJson - JSON snippet: {json.Substring(0, Math.Min(200, json.Length))}...");
                         }
 
                         var playerMatch = System.Text.RegularExpressions.Regex.Match(json, @"""PlayerProfile"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
@@ -372,7 +380,7 @@ namespace EquipmentSkinSystem
                         _playerProfile = ParseJson(json);
                         ValidateAndFixProfile(_playerProfile, "Player");
                         _petProfile = new CharacterSkinProfile("Pet");
-                        _currentCharacterType = CharacterType.Player;
+                        _currentCharacterType = CharacterType.Player; // 舊格式默認為玩家
                         _appSettings = new AppSettings();
                         
                         // 自動保存為新格式
@@ -382,9 +390,12 @@ namespace EquipmentSkinSystem
                 }
                 else
                 {
+                    // 空 JSON 或配置文件不存在：使用默認值
                     _playerProfile = new CharacterSkinProfile("Player");
                     _petProfile = new CharacterSkinProfile("Pet");
+                    _currentCharacterType = CharacterType.Player; // 默認是玩家（鴨子）
                     _appSettings = new AppSettings();
+                    Logger.Debug("LoadFromJson - Empty JSON, using default values (Player)");
                 }
             }
             catch (Exception e)

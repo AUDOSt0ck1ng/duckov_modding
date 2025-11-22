@@ -39,6 +39,8 @@ namespace EquipmentSkinSystem
                 ["UI_Save"] = "保存",
                 ["UI_Reset"] = "重置",
                 ["UI_Close"] = "關閉",
+                ["UI_Preview"] = "角色預覽",
+                ["UI_SkinID_Placeholder"] = "外觀ID",
 
                 // 裝備槽位名稱
                 ["Slot_Armor"] = "護甲",
@@ -78,6 +80,8 @@ namespace EquipmentSkinSystem
                 ["UI_Save"] = "Save",
                 ["UI_Reset"] = "Reset",
                 ["UI_Close"] = "Close",
+                ["UI_Preview"] = "Character Preview",
+                ["UI_SkinID_Placeholder"] = "Skin ID",
 
                 // 裝備槽位名稱
                 ["Slot_Armor"] = "Armor",
