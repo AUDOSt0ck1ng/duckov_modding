@@ -429,6 +429,224 @@ namespace EquipmentSkinSystem
                         }
                     }
                 }
+
+                // 4. 更新頭髮和嘴巴顯示狀態（根據頭盔和面罩的 ShowHair 和 ShowMouth 設定）
+                UpdateHairAndMouthVisibility(controller, helmatSlot, faceMaskSlot, helmatConfig, faceMaskConfig, characterType);
+            }
+            
+            /// <summary>
+            /// 根據頭盔和面罩的 ShowHair 和 ShowMouth 設定更新頭髮和嘴巴顯示狀態
+            /// </summary>
+            private static void UpdateHairAndMouthVisibility(
+                CharacterEquipmentController controller,
+                Slot helmatSlot,
+                Slot faceMaskSlot,
+                SlotSkinConfig helmatConfig,
+                SlotSkinConfig faceMaskConfig,
+                CharacterType characterType)
+            {
+                try
+                {
+                    // 取得 CharacterModel
+                    var cm = Traverse.Create(controller).Field("characterMainControl").GetValue<CharacterMainControl>();
+                    if (cm == null || cm.characterModel == null)
+                    {
+                        Logger.Debug("UpdateHairVisibility: characterModel not found");
+                        return;
+                    }
+
+                    var characterModel = cm.characterModel;
+                    var customFace = characterModel.CustomFace;
+                    if (customFace == null)
+                    {
+                        Logger.Debug("UpdateHairAndMouthVisibility: customFace not found");
+                        return;
+                    }
+
+                    // 取得 showHairHash 和 showMouthHash（與遊戲一致）
+                    int showHairHash = "ShowHair".GetHashCode();
+                    int showMouthHash = "ShowMouth".GetHashCode();
+
+                    // 檢查頭盔的 ShowHair 設定
+                    bool helmatShowHair = true; // 預設值
+                    if (helmatSlot != null)
+                    {
+                        if (helmatSlot.Content == null)
+                        {
+                            // 沒有頭盔，顯示頭髮
+                            helmatShowHair = true;
+                        }
+                        else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID == -1)
+                        {
+                            // 頭盔被設定為隱藏（-1），當作沒有頭盔，顯示頭髮
+                            helmatShowHair = true;
+                            Logger.Debug("UpdateHairAndMouthVisibility: Helmet is hidden (ID=-1), treating as no helmet");
+                        }
+                        else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID > 0)
+                        {
+                            // 使用造型：檢查造型 Item 的 ShowHair
+                            Item skinItem = ItemAssetsCollection.InstantiateSync(helmatConfig.SkinItemTypeID);
+                            if (skinItem != null)
+                            {
+                                helmatShowHair = skinItem.Constants.GetBool(showHairHash);
+                                GameObject.Destroy(skinItem.gameObject);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Helmet using skin {helmatConfig.SkinItemTypeID}, ShowHair={helmatShowHair}");
+                            }
+                            else
+                            {
+                                // 如果無法取得造型 Item，使用原始 Item 的設定
+                                helmatShowHair = helmatSlot.Content.Constants.GetBool(showHairHash);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Failed to get skin item, using original helmet ShowHair={helmatShowHair}");
+                            }
+                        }
+                        else
+                        {
+                            // 不使用造型：檢查原始 Item 的 ShowHair
+                            helmatShowHair = helmatSlot.Content.Constants.GetBool(showHairHash);
+                            Logger.Debug($"UpdateHairAndMouthVisibility: Helmet using original item, ShowHair={helmatShowHair}");
+                        }
+                    }
+
+                    // 檢查面罩的 ShowHair 設定
+                    bool faceMaskShowHair = true; // 預設值
+                    if (faceMaskSlot != null)
+                    {
+                        if (faceMaskSlot.Content == null)
+                        {
+                            // 沒有面罩，預設顯示頭髮
+                            faceMaskShowHair = true;
+                        }
+                        else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID == -1)
+                        {
+                            // 面罩被設定為隱藏（-1），當作沒有面罩，顯示頭髮
+                            faceMaskShowHair = true;
+                            Logger.Debug("UpdateHairAndMouthVisibility: Face mask is hidden (ID=-1), treating as no face mask");
+                        }
+                        else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID > 0)
+                        {
+                            // 使用造型：檢查造型 Item 的 ShowHair
+                            Item skinItem = ItemAssetsCollection.InstantiateSync(faceMaskConfig.SkinItemTypeID);
+                            if (skinItem != null)
+                            {
+                                faceMaskShowHair = skinItem.Constants.GetBool(showHairHash, defaultResult: true);
+                                GameObject.Destroy(skinItem.gameObject);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Face mask using skin {faceMaskConfig.SkinItemTypeID}, ShowHair={faceMaskShowHair}");
+                            }
+                            else
+                            {
+                                // 如果無法取得造型 Item，使用原始 Item 的設定
+                                faceMaskShowHair = faceMaskSlot.Content.Constants.GetBool(showHairHash, defaultResult: true);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Failed to get skin item, using original face mask ShowHair={faceMaskShowHair}");
+                            }
+                        }
+                        else
+                        {
+                            // 不使用造型：檢查原始 Item 的 ShowHair
+                            faceMaskShowHair = faceMaskSlot.Content.Constants.GetBool(showHairHash, defaultResult: true);
+                            Logger.Debug($"UpdateHairAndMouthVisibility: Face mask using original item, ShowHair={faceMaskShowHair}");
+                        }
+                    }
+
+                    // 檢查頭盔的 ShowMouth 設定
+                    bool helmatShowMouth = true; // 預設值
+                    if (helmatSlot != null)
+                    {
+                        if (helmatSlot.Content == null)
+                        {
+                            // 沒有頭盔，顯示嘴巴
+                            helmatShowMouth = true;
+                        }
+                        else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID == -1)
+                        {
+                            // 頭盔被設定為隱藏（-1），當作沒有頭盔，顯示嘴巴
+                            helmatShowMouth = true;
+                            Logger.Debug("UpdateHairAndMouthVisibility: Helmet is hidden (ID=-1), treating as no helmet for mouth");
+                        }
+                        else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID > 0)
+                        {
+                            // 使用造型：檢查造型 Item 的 ShowMouth
+                            Item skinItem = ItemAssetsCollection.InstantiateSync(helmatConfig.SkinItemTypeID);
+                            if (skinItem != null)
+                            {
+                                helmatShowMouth = skinItem.Constants.GetBool(showMouthHash, defaultResult: true);
+                                GameObject.Destroy(skinItem.gameObject);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Helmet using skin {helmatConfig.SkinItemTypeID}, ShowMouth={helmatShowMouth}");
+                            }
+                            else
+                            {
+                                // 如果無法取得造型 Item，使用原始 Item 的設定
+                                helmatShowMouth = helmatSlot.Content.Constants.GetBool(showMouthHash, defaultResult: true);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Failed to get skin item, using original helmet ShowMouth={helmatShowMouth}");
+                            }
+                        }
+                        else
+                        {
+                            // 不使用造型：檢查原始 Item 的 ShowMouth
+                            helmatShowMouth = helmatSlot.Content.Constants.GetBool(showMouthHash, defaultResult: true);
+                            Logger.Debug($"UpdateHairAndMouthVisibility: Helmet using original item, ShowMouth={helmatShowMouth}");
+                        }
+                    }
+
+                    // 檢查面罩的 ShowMouth 設定
+                    bool faceMaskShowMouth = true; // 預設值
+                    if (faceMaskSlot != null)
+                    {
+                        if (faceMaskSlot.Content == null)
+                        {
+                            // 沒有面罩，預設顯示嘴巴
+                            faceMaskShowMouth = true;
+                        }
+                        else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID == -1)
+                        {
+                            // 面罩被設定為隱藏（-1），當作沒有面罩，顯示嘴巴
+                            faceMaskShowMouth = true;
+                            Logger.Debug("UpdateHairAndMouthVisibility: Face mask is hidden (ID=-1), treating as no face mask for mouth");
+                        }
+                        else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID > 0)
+                        {
+                            // 使用造型：檢查造型 Item 的 ShowMouth
+                            Item skinItem = ItemAssetsCollection.InstantiateSync(faceMaskConfig.SkinItemTypeID);
+                            if (skinItem != null)
+                            {
+                                faceMaskShowMouth = skinItem.Constants.GetBool(showMouthHash, defaultResult: true);
+                                GameObject.Destroy(skinItem.gameObject);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Face mask using skin {faceMaskConfig.SkinItemTypeID}, ShowMouth={faceMaskShowMouth}");
+                            }
+                            else
+                            {
+                                // 如果無法取得造型 Item，使用原始 Item 的設定
+                                faceMaskShowMouth = faceMaskSlot.Content.Constants.GetBool(showMouthHash, defaultResult: true);
+                                Logger.Debug($"UpdateHairAndMouthVisibility: Failed to get skin item, using original face mask ShowMouth={faceMaskShowMouth}");
+                            }
+                        }
+                        else
+                        {
+                            // 不使用造型：檢查原始 Item 的 ShowMouth
+                            faceMaskShowMouth = faceMaskSlot.Content.Constants.GetBool(showMouthHash, defaultResult: true);
+                            Logger.Debug($"UpdateHairAndMouthVisibility: Face mask using original item, ShowMouth={faceMaskShowMouth}");
+                        }
+                    }
+
+                    // 頭髮顯示需要頭盔和面罩都允許
+                    if (customFace.hairSocket != null)
+                    {
+                        bool shouldShowHair = helmatShowHair && faceMaskShowHair;
+                        customFace.hairSocket.gameObject.SetActive(shouldShowHair);
+                        Logger.Debug($"UpdateHairAndMouthVisibility: helmatShowHair={helmatShowHair}, faceMaskShowHair={faceMaskShowHair}, shouldShowHair={shouldShowHair}");
+                    }
+
+                    // 嘴巴顯示需要頭盔和面罩都允許
+                    if (customFace.mouthPart != null && customFace.mouthPart.socket != null)
+                    {
+                        bool shouldShowMouth = helmatShowMouth && faceMaskShowMouth;
+                        customFace.mouthPart.socket.gameObject.SetActive(shouldShowMouth);
+                        Logger.Debug($"UpdateHairAndMouthVisibility: helmatShowMouth={helmatShowMouth}, faceMaskShowMouth={faceMaskShowMouth}, shouldShowMouth={shouldShowMouth}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Error updating hair visibility", ex);
+                }
             }
             
             /// <summary>

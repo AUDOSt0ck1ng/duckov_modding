@@ -38,7 +38,7 @@ namespace EquipmentSkinSystem
 
                 // 初始化語言系統
                 Localization.Initialize();
-                
+
                 // 訂閱遊戲的語言變更事件
                 Localization.SubscribeToGameLanguageChange();
 
