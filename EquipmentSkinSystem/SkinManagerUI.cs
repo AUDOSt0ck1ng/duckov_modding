@@ -72,6 +72,25 @@ namespace EquipmentSkinSystem
             InitializePreview();
             // 然後創建 UI（UI 中會使用預覽系統）
             CreateUI();
+            
+            // 訂閱語言變更事件
+            Localization.OnLanguageChanged += OnLocalizationLanguageChanged;
+        }
+        
+        /// <summary>
+        /// 當 Localization 語言變更時的回調
+        /// </summary>
+        private void OnLocalizationLanguageChanged(string newLanguage)
+        {
+            try
+            {
+                Logger.Info($"UI received language change notification: {newLanguage}");
+                RefreshUIForLanguage();
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Error handling localization language change in UI: {e.Message}", e);
+            }
         }
         
         /// <summary>
@@ -1089,10 +1108,6 @@ namespace EquipmentSkinSystem
             layout.childForceExpandWidth = true;
             layout.padding = new RectOffset(10, 10, 5, 5);
 
-            var saveButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Save", "保存配置"), OnSaveClicked);
-            var saveText = saveButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (saveText != null) _localizedTexts["UI_Save"] = saveText;
-            
             var resetButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Reset", "重置配置"), OnResetClicked);
             var resetText = resetButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
             if (resetText != null) _localizedTexts["UI_Reset"] = resetText;
@@ -1961,23 +1976,42 @@ namespace EquipmentSkinSystem
             layout.childForceExpandWidth = true;
 
             // 語言選項標題
-            TextMeshProUGUI titleText = CreateText(contentObj.transform, Localization.Get("Language_Select", "選擇語言"), 0);
+            TextMeshProUGUI titleText = CreateText(contentObj.transform, Localization.Get("Language_Select", "當前語言"), 0);
             titleText.fontSize = 22;
             titleText.fontStyle = FontStyles.Bold;
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 30);
             _localizedTexts["Language_Select"] = titleText;
 
-            // 語言選項
+            // 顯示當前語言（唯讀）
             string currentLang = Localization.GetCurrentLanguage();
-            bool isZhTWSelected = currentLang == "zh-TW";
-            bool isEnUSSelected = currentLang == "en-US";
+            string currentLangName = Localization.GetLanguageDisplayName(currentLang);
             
-            CreateLanguageOption(contentObj.transform, Localization.Get("Language_TraditionalChinese", "繁體中文"), "zh-TW", isZhTWSelected);
-            CreateLanguageOption(contentObj.transform, Localization.Get("Language_English", "English"), "en-US", isEnUSSelected);
+            // 當前語言顯示框
+            GameObject currentLangObj = new GameObject("CurrentLanguageDisplay");
+            currentLangObj.transform.SetParent(contentObj.transform, false);
+            
+            RectTransform currentLangRect = currentLangObj.AddComponent<RectTransform>();
+            currentLangRect.sizeDelta = new Vector2(0, 50);
+            
+            // 背景框
+            UnityEngine.UI.Image bgImage = currentLangObj.AddComponent<UnityEngine.UI.Image>();
+            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+            
+            // 語言名稱文字
+            TextMeshProUGUI currentLangText = CreateText(currentLangObj.transform, currentLangName, 0);
+            currentLangText.fontSize = 20;
+            currentLangText.fontStyle = FontStyles.Bold;
+            currentLangText.alignment = TextAlignmentOptions.Center;
+            currentLangText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+            RectTransform currentLangTextRect = currentLangText.gameObject.GetComponent<RectTransform>();
+            currentLangTextRect.anchorMin = Vector2.zero;
+            currentLangTextRect.anchorMax = Vector2.one;
+            currentLangTextRect.sizeDelta = Vector2.zero;
+            _localizedTexts["Language_Current"] = currentLangText;
 
-            // 預留空間說明
-            TextMeshProUGUI noteText = CreateText(contentObj.transform, Localization.Get("Language_Note", "（其他語言選項將在未來版本中添加）"), 0);
+            // 說明文字
+            TextMeshProUGUI noteText = CreateText(contentObj.transform, Localization.Get("Language_Note", "語言設定會自動跟隨遊戲設定"), 0);
             noteText.fontSize = 16;
             noteText.color = new Color(0.7f, 0.7f, 0.7f, 1f);
             noteText.alignment = TextAlignmentOptions.Center;
@@ -1987,84 +2021,6 @@ namespace EquipmentSkinSystem
             return contentObj;
         }
 
-        private void CreateLanguageOption(Transform parent, string languageName, string languageCode, bool isSelected)
-        {
-            GameObject optionObj = new GameObject($"LanguageOption_{languageCode}");
-            optionObj.transform.SetParent(parent, false);
-
-            RectTransform optionRect = optionObj.AddComponent<RectTransform>();
-            optionRect.sizeDelta = new Vector2(0, 40);
-
-            HorizontalLayoutGroup layout = optionObj.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 10;
-            layout.padding = new RectOffset(0, 0, 0, 0);
-            layout.childControlHeight = true;
-            layout.childControlWidth = false;
-            layout.childForceExpandHeight = true;
-            layout.childForceExpandWidth = false;
-
-            // 語言名稱（可點擊）
-            GameObject nameButtonObj = new GameObject("LanguageNameButton");
-            nameButtonObj.transform.SetParent(optionObj.transform, false);
-            
-            RectTransform nameButtonRect = nameButtonObj.AddComponent<RectTransform>();
-            nameButtonRect.sizeDelta = new Vector2(300, 40);
-            
-            Button nameButton = nameButtonObj.AddComponent<Button>();
-            ColorBlock nameColors = nameButton.colors;
-            nameColors.normalColor = Color.clear; // 透明背景
-            nameColors.highlightedColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
-            nameColors.pressedColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
-            nameButton.colors = nameColors;
-            nameButton.onClick.AddListener(() => OnLanguageChanged(languageCode));
-
-            TextMeshProUGUI nameText = CreateText(nameButtonObj.transform, languageName, 0);
-            RectTransform nameRect = nameText.gameObject.GetComponent<RectTransform>();
-            nameRect.sizeDelta = new Vector2(300, 0);
-            nameRect.anchorMin = Vector2.zero;
-            nameRect.anchorMax = Vector2.one;
-            nameText.alignment = TextAlignmentOptions.Center;
-            nameText.fontSize = 18;
-            _localizedTexts[$"Language_{languageCode}"] = nameText;
-
-            // 選中標記
-            bool isCurrentlySelected = Localization.GetCurrentLanguage() == languageCode;
-            if (isCurrentlySelected)
-            {
-                TextMeshProUGUI checkText = CreateText(optionObj.transform, "✓", 0);
-                checkText.gameObject.name = "Checkmark"; // 設置名字以便後續查找
-                RectTransform checkRect = checkText.gameObject.GetComponent<RectTransform>();
-                checkRect.sizeDelta = new Vector2(30, 0);
-                checkText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
-                checkText.fontSize = 24;
-                checkText.fontStyle = FontStyles.Bold;
-                checkText.alignment = TextAlignmentOptions.Center;
-                
-                // 確保打勾標記垂直置中
-                checkRect.anchorMin = new Vector2(1f, 0.5f);
-                checkRect.anchorMax = new Vector2(1f, 0.5f);
-                checkRect.pivot = new Vector2(0.5f, 0.5f);
-            }
-        }
-
-        private void OnLanguageChanged(string languageCode)
-        {
-            try
-            {
-                Localization.SetLanguage(languageCode);
-                Logger.Info($"Language changed to: {languageCode}");
-                
-                // 重新載入 UI 以應用新語言
-                // 注意：這需要重新創建 UI，或者實現動態更新文字的方法
-                // 目前先保存設定，下次打開 UI 時會應用新語言
-                RefreshUIForLanguage();
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"Error changing language: {languageCode}", e);
-            }
-        }
-
         private void RefreshUIForLanguage()
         {
             // 簡單的循環更新所有文字
@@ -2072,14 +2028,12 @@ namespace EquipmentSkinSystem
             {
                 if (kvp.Value != null)
                 {
-                    // 特殊處理語言選項名稱
-                    if (kvp.Key.StartsWith("Language_zh-TW"))
+                    // 特殊處理當前語言顯示
+                    if (kvp.Key == "Language_Current")
                     {
-                        kvp.Value.text = Localization.Get("Language_TraditionalChinese", "繁體中文");
-                    }
-                    else if (kvp.Key.StartsWith("Language_en-US"))
-                    {
-                        kvp.Value.text = Localization.Get("Language_English", "English");
+                        string currentLang = Localization.GetCurrentLanguage();
+                        string currentLangName = Localization.GetLanguageDisplayName(currentLang);
+                        kvp.Value.text = currentLangName;
                     }
                     else if (kvp.Key.StartsWith("UI_Clear_"))
                     {
@@ -2494,6 +2448,9 @@ namespace EquipmentSkinSystem
             {
                 _uiPanel.SetActive(true);
                 
+                // 每次打開 UI 時檢查語言是否變更
+                Localization.CheckAndUpdateLanguage();
+                
                 // 每次從關閉狀態打開 UI 時，都顯示第一層（主面板）
                 // 這確保了無論之前在哪一層，關閉後重新打開都會回到第一層
                 if (_backgroundPanel != null && _settingsPanel != null)
@@ -2641,6 +2598,9 @@ namespace EquipmentSkinSystem
                     // 立即應用變更（觸發全身重新渲染）
                     RefreshAllEquipment();
                     UpdatePreview();
+                    
+                    // 自動保存配置
+                    DataPersistence.SaveConfig();
                 }
                 else
                 {
@@ -2677,6 +2637,9 @@ namespace EquipmentSkinSystem
                         RefreshAllEquipment();
                         UpdatePreview();
                     }
+                    
+                    // 自動保存配置
+                    DataPersistence.SaveConfig();
                 }
                 else if (int.TryParse(value, out int itemID))
                 {
@@ -2690,6 +2653,9 @@ namespace EquipmentSkinSystem
                         // 更新預覽
                         UpdatePreview();
                     }
+                    
+                    // 自動保存配置
+                    DataPersistence.SaveConfig();
                 }
             }
             catch (Exception e)
@@ -2816,32 +2782,6 @@ namespace EquipmentSkinSystem
             }
         }
 
-        private void OnSaveClicked()
-        {
-            Logger.Debug("Save button clicked!");
-            
-            // 先保存配置到文件
-            try
-            {
-                DataPersistence.SaveConfig();
-                Logger.Info("Configuration saved to file!");
-            }
-            catch (Exception e)
-            {
-                Logger.Error("Failed to save config", e);
-            }
-            
-                // 立即應用所有槽位的設定（全身重新渲染）
-            RefreshAllEquipment();
-            
-            // 更新預覽
-            UpdatePreview();
-            
-            Logger.Info("Configuration applied!");
-            
-            // 保存後自動關閉介面
-            HideUI();
-        }
 
         private void OnClearSlotClicked(EquipmentSlotType slotType)
         {
@@ -2859,6 +2799,9 @@ namespace EquipmentSkinSystem
                 
                 // 立即應用變更（全身重新渲染）
                 RefreshAllEquipment();
+                
+                // 自動保存配置
+                DataPersistence.SaveConfig();
                 
                 Logger.Info($"Slot {slotType} cleared!");
             }
@@ -2897,6 +2840,9 @@ namespace EquipmentSkinSystem
 
         private void OnDestroy()
         {
+            // 取消訂閱語言變更事件
+            Localization.OnLanguageChanged -= OnLocalizationLanguageChanged;
+            
             // 確保恢復輸入
             if (_isUIVisible && _uiPanel != null)
             {
