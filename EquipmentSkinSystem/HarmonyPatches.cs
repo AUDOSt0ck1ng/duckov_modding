@@ -473,8 +473,29 @@ namespace EquipmentSkinSystem
                     {
                         if (helmatSlot.Content == null)
                         {
-                            // 沒有頭盔，顯示頭髮
-                            helmatShowHair = true;
+                            // 沒有原始裝備：如果啟用了外觀且設定了外觀 ID，檢查外觀裝備的 ShowHair
+                            if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID > 0)
+                            {
+                                Item skinItem = ItemAssetsCollection.InstantiateSync(helmatConfig.SkinItemTypeID);
+                                if (skinItem != null)
+                                {
+                                    helmatShowHair = skinItem.Constants.GetBool(showHairHash);
+                                    GameObject.Destroy(skinItem.gameObject);
+                                    Logger.Debug($"UpdateHairAndMouthVisibility: Helmet has no equipment but using skin {helmatConfig.SkinItemTypeID}, ShowHair={helmatShowHair}");
+                                }
+                                else
+                                {
+                                    // 無法取得外觀 Item，預設顯示頭髮
+                                    helmatShowHair = true;
+                                    Logger.Debug("UpdateHairAndMouthVisibility: Helmet has no equipment, failed to get skin item, showing hair");
+                                }
+                            }
+                            else
+                            {
+                                // 沒有原始裝備且沒有啟用外觀，顯示頭髮
+                                helmatShowHair = true;
+                                Logger.Debug("UpdateHairAndMouthVisibility: Helmet has no equipment and no skin, showing hair");
+                            }
                         }
                         else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID == -1)
                         {
@@ -513,8 +534,29 @@ namespace EquipmentSkinSystem
                     {
                         if (faceMaskSlot.Content == null)
                         {
-                            // 沒有面罩，預設顯示頭髮
-                            faceMaskShowHair = true;
+                            // 沒有原始裝備：如果啟用了外觀且設定了外觀 ID，檢查外觀裝備的 ShowHair
+                            if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID > 0)
+                            {
+                                Item skinItem = ItemAssetsCollection.InstantiateSync(faceMaskConfig.SkinItemTypeID);
+                                if (skinItem != null)
+                                {
+                                    faceMaskShowHair = skinItem.Constants.GetBool(showHairHash, defaultResult: true);
+                                    GameObject.Destroy(skinItem.gameObject);
+                                    Logger.Debug($"UpdateHairAndMouthVisibility: Face mask has no equipment but using skin {faceMaskConfig.SkinItemTypeID}, ShowHair={faceMaskShowHair}");
+                                }
+                                else
+                                {
+                                    // 無法取得外觀 Item，預設顯示頭髮
+                                    faceMaskShowHair = true;
+                                    Logger.Debug("UpdateHairAndMouthVisibility: Face mask has no equipment, failed to get skin item, showing hair");
+                                }
+                            }
+                            else
+                            {
+                                // 沒有原始裝備且沒有啟用外觀，預設顯示頭髮
+                                faceMaskShowHair = true;
+                                Logger.Debug("UpdateHairAndMouthVisibility: Face mask has no equipment and no skin, showing hair");
+                            }
                         }
                         else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID == -1)
                         {
@@ -553,8 +595,29 @@ namespace EquipmentSkinSystem
                     {
                         if (helmatSlot.Content == null)
                         {
-                            // 沒有頭盔，顯示嘴巴
-                            helmatShowMouth = true;
+                            // 沒有原始裝備：如果啟用了外觀且設定了外觀 ID，檢查外觀裝備的 ShowMouth
+                            if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID > 0)
+                            {
+                                Item skinItem = ItemAssetsCollection.InstantiateSync(helmatConfig.SkinItemTypeID);
+                                if (skinItem != null)
+                                {
+                                    helmatShowMouth = skinItem.Constants.GetBool(showMouthHash, defaultResult: true);
+                                    GameObject.Destroy(skinItem.gameObject);
+                                    Logger.Debug($"UpdateHairAndMouthVisibility: Helmet has no equipment but using skin {helmatConfig.SkinItemTypeID}, ShowMouth={helmatShowMouth}");
+                                }
+                                else
+                                {
+                                    // 無法取得外觀 Item，預設顯示嘴巴
+                                    helmatShowMouth = true;
+                                    Logger.Debug("UpdateHairAndMouthVisibility: Helmet has no equipment, failed to get skin item, showing mouth");
+                                }
+                            }
+                            else
+                            {
+                                // 沒有原始裝備且沒有啟用外觀，顯示嘴巴
+                                helmatShowMouth = true;
+                                Logger.Debug("UpdateHairAndMouthVisibility: Helmet has no equipment and no skin, showing mouth");
+                            }
                         }
                         else if (helmatConfig.UseSkin && helmatConfig.SkinItemTypeID == -1)
                         {
@@ -593,8 +656,29 @@ namespace EquipmentSkinSystem
                     {
                         if (faceMaskSlot.Content == null)
                         {
-                            // 沒有面罩，預設顯示嘴巴
-                            faceMaskShowMouth = true;
+                            // 沒有原始裝備：如果啟用了外觀且設定了外觀 ID，檢查外觀裝備的 ShowMouth
+                            if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID > 0)
+                            {
+                                Item skinItem = ItemAssetsCollection.InstantiateSync(faceMaskConfig.SkinItemTypeID);
+                                if (skinItem != null)
+                                {
+                                    faceMaskShowMouth = skinItem.Constants.GetBool(showMouthHash, defaultResult: true);
+                                    GameObject.Destroy(skinItem.gameObject);
+                                    Logger.Debug($"UpdateHairAndMouthVisibility: Face mask has no equipment but using skin {faceMaskConfig.SkinItemTypeID}, ShowMouth={faceMaskShowMouth}");
+                                }
+                                else
+                                {
+                                    // 無法取得外觀 Item，預設顯示嘴巴
+                                    faceMaskShowMouth = true;
+                                    Logger.Debug("UpdateHairAndMouthVisibility: Face mask has no equipment, failed to get skin item, showing mouth");
+                                }
+                            }
+                            else
+                            {
+                                // 沒有原始裝備且沒有啟用外觀，預設顯示嘴巴
+                                faceMaskShowMouth = true;
+                                Logger.Debug("UpdateHairAndMouthVisibility: Face mask has no equipment and no skin, showing mouth");
+                            }
                         }
                         else if (faceMaskConfig.UseSkin && faceMaskConfig.SkinItemTypeID == -1)
                         {
