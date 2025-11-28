@@ -48,7 +48,7 @@
   },
 
   // 容器建立後執行的命令
-  "postCreateCommand": "dotnet --version && echo 'Dev Container 已就緒！'",
+  "postCreateCommand": "bash .devcontainer/init.sh",
 
   // 保持容器運行
   "postStartCommand": "echo '歡迎使用 Duckov Modding 開發環境'",
