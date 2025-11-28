@@ -21,10 +21,11 @@ namespace EquipmentSkinSystem
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (_uiManager == null) return;
+            if (_uiManager == null)
+                return;
 
             float currentTime = Time.time;
-            
+
             // 檢查是否為雙擊（在時間間隔內點擊兩次）
             if (currentTime - _lastClickTime < DOUBLE_CLICK_TIME)
             {
@@ -40,4 +41,3 @@ namespace EquipmentSkinSystem
         }
     }
 }
-

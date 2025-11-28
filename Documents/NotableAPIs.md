@@ -9,7 +9,7 @@ Use ItemAssetsCollection class to generate item instances.
 ```
 //notable functions
 public static async UniTask<Item> InstantiateAsync(int typeID)
-public static Item InstantiateSync(int typeID) 
+public static Item InstantiateSync(int typeID)
 ```
 
 ```

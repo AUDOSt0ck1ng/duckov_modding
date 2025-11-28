@@ -1,0 +1,42 @@
+# Pre-commit hooks for EquipmentSkinSystem (Minimal Version)
+# 最小化配置 - 只包含最重要的檢查
+# 如果完整版太慢，可以將此文件重命名為 .pre-commit-config.yaml
+
+repos:
+  # 基本文件檢查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        exclude: '^(decompiled|duckov-dlls|\.git)/.*'
+      - id: end-of-file-fixer
+        name: Fix end of files
+        exclude: '^(decompiled|duckov-dlls|bin|obj|\.git)/.*'
+      - id: check-yaml
+        name: Check YAML syntax
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: mixed-line-ending
+        name: Check mixed line endings
+        args: ['--fix=lf']
+        exclude: '^(decompiled|duckov-dlls|\.git)/.*'
+
+  # C# 格式檢查（不包含編譯）
+  - repo: local
+    hooks:
+      - id: dotnet-format
+        name: dotnet format (C# code formatting)
+        entry: bash -c 'cd EquipmentSkinSystem && dotnet format EquipmentSkinSystem.sln --verify-no-changes --severity error || exit 1'
+        language: system
+        files: '^EquipmentSkinSystem/.*\.cs$'
+        exclude: '^(decompiled|duckov-dlls|\.git)/.*'
+        pass_filenames: false
+
+      - id: check-logger-usage
+        name: Check Logger usage (no Console.WriteLine)
+        entry: bash -c 'grep -rn "Console\.WriteLine\|Console\.Write" EquipmentSkinSystem/*.cs 2>/dev/null | grep -v "^\s*//" | grep -v obj/ && exit 1 || exit 0'
+        language: system
+        files: '^EquipmentSkinSystem/.*\.cs$'
+        exclude: '^(decompiled|duckov-dlls|\.git)/.*'
+        pass_filenames: false

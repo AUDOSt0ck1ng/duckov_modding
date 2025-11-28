@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using ItemStatsSystem;
-using HarmonyLib;
 using Duckov.Utilities;
+using HarmonyLib;
+using ItemStatsSystem;
 
 namespace EquipmentSkinSystem
 {
@@ -13,7 +13,7 @@ namespace EquipmentSkinSystem
     public class ItemInfoProvider : IItemInfoProvider
     {
         private static ItemInfoProvider? _instance;
-        
+
         /// <summary>
         /// 取得單例實例
         /// </summary>
@@ -65,7 +65,7 @@ namespace EquipmentSkinSystem
                     maxQuality = 999  // 設定一個足夠大的值來包含所有品質的物品
                 };
                 var allTypeIDsWithFilter = ItemAssetsCollection.GetAllTypeIds(itemFilter);
-                
+
                 var dynamicTypeIDs = new List<int>();
                 if (allTypeIDsWithFilter != null)
                 {
@@ -81,9 +81,9 @@ namespace EquipmentSkinSystem
 
                 // 合併並去重
                 var allTypeIDs = baseTypeIDs.Union(dynamicTypeIDs).ToArray();
-                
+
                 Logger.Debug($"GetAllItemTypeIDs: Found {baseTypeIDs.Count} base items and {dynamicTypeIDs.Count} dynamic items, total {allTypeIDs.Length} items");
-                
+
                 return allTypeIDs;
             }
             catch (System.Exception e)
@@ -99,7 +99,7 @@ namespace EquipmentSkinSystem
         public List<ItemInfo> GetAllItemInfos()
         {
             var itemInfos = new List<ItemInfo>();
-            
+
             try
             {
                 var collection = ItemAssetsCollection.Instance;
@@ -130,7 +130,7 @@ namespace EquipmentSkinSystem
                     maxQuality = 999  // 設定一個足夠大的值來包含所有品質的物品
                 };
                 var allTypeIDsWithFilter = ItemAssetsCollection.GetAllTypeIds(itemFilter);
-                
+
                 if (allTypeIDsWithFilter != null)
                 {
                     var baseTypeIDSet = new System.Collections.Generic.HashSet<int>();
@@ -141,7 +141,7 @@ namespace EquipmentSkinSystem
                             baseTypeIDSet.Add(entry.typeID);
                         }
                     }
-                    
+
                     foreach (var typeID in allTypeIDsWithFilter)
                     {
                         if (!baseTypeIDSet.Contains(typeID))
@@ -228,7 +228,7 @@ namespace EquipmentSkinSystem
         public List<ItemInfo> GetItemsByCategory(string categoryName)
         {
             var itemInfos = new List<ItemInfo>();
-            
+
             try
             {
                 var allItems = GetAllItemInfos();
@@ -257,7 +257,7 @@ namespace EquipmentSkinSystem
         public List<ItemInfo> GetItemsByTags(string[] requireTags, string[]? excludeTags = null)
         {
             var itemInfos = new List<ItemInfo>();
-            
+
             try
             {
                 // 使用 ItemFilter 來查詢物品
@@ -312,7 +312,7 @@ namespace EquipmentSkinSystem
 
                 // 使用 GetAllTypeIds 來取得符合條件的 TypeID
                 var typeIDs = ItemAssetsCollection.GetAllTypeIds(itemFilter);
-                
+
                 if (typeIDs != null)
                 {
                     foreach (var typeID in typeIDs)
@@ -340,4 +340,3 @@ namespace EquipmentSkinSystem
         }
     }
 }
-

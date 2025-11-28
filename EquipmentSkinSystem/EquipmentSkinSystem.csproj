@@ -9,7 +9,7 @@
         <DuckovPath Condition="'$(IsContainer)' == 'true'">/duckov</DuckovPath>
 
         <!-- 本地開發環境：請根據您的系統填寫遊戲路徑 -->
-        
+
         <!-- For Windows users, please fill the folder path which contains Duckov.exe below -->
         <!-- Windows 用户请在下面这行填写你的鸭科夫安装路径（包含 Duckov.exe 的目录），这样编译器就能找到相关的 dll 文件 -->
         <DuckovPath Condition="'$(DuckovPath)' == '' AND '$(IsMac)' != 'true'">E:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov</DuckovPath>
@@ -30,4 +30,3 @@
         <PackageReference Include="Lib.Harmony" Version="2.2.2" />
     </ItemGroup>
 </Project>
-

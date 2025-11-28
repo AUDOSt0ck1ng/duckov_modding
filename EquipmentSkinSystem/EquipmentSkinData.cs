@@ -53,17 +53,17 @@ namespace EquipmentSkinSystem
     {
         // 配置版本號（用於未來升級時的資料遷移）
         public int ConfigVersion;
-        
+
         public string ProfileName;
-        
+
         // 使用 List 以支援 JsonUtility 序列化
         // 注意：必須是 public 且不能在聲明時初始化（JsonUtility 的限制）
         public List<SlotSkinConfig> SlotConfigsList;
-        
+
         // 運行時使用的 Dictionary（不序列化）
         [NonSerialized]
         private Dictionary<EquipmentSlotType, SlotSkinConfig>? _slotConfigsDict;
-        
+
         public Dictionary<EquipmentSlotType, SlotSkinConfig> SlotConfigs
         {
             get
@@ -81,18 +81,18 @@ namespace EquipmentSkinSystem
             ProfileName = name;
             ConfigVersion = 1;
             SlotConfigsList = new List<SlotSkinConfig>();
-            
+
             // 初始化所有槽位
             foreach (EquipmentSlotType slotType in Enum.GetValues(typeof(EquipmentSlotType)))
             {
                 SlotConfigsList.Add(new SlotSkinConfig(slotType));
             }
-            
+
             RebuildDictionary();
-            
+
             // 注意：不在構造函數中使用 Logger，避免初始化順序問題
         }
-        
+
         /// <summary>
         /// 從 List 重建 Dictionary（反序列化後調用）
         /// </summary>
@@ -107,7 +107,7 @@ namespace EquipmentSkinSystem
                 }
             }
         }
-        
+
         /// <summary>
         /// 保存前同步 Dictionary 到 List
         /// </summary>
@@ -169,7 +169,7 @@ namespace EquipmentSkinSystem
         public bool EnableInfoLog = true;
         public bool EnableWarningLog = true;
         public bool EnableErrorLog = true;
-        
+
         // 語系設定（未來擴展用）
         public string Language = "zh-TW";  // 預設繁體中文
 
@@ -206,7 +206,7 @@ namespace EquipmentSkinSystem
         public CharacterSkinProfile PetProfile => _petProfile;
         public CharacterType CurrentCharacterType => _currentCharacterType;
         public AppSettings AppSettings => _appSettings;
-        
+
         // 當前選中的角色配置
         public CharacterSkinProfile CurrentProfile => _currentCharacterType == CharacterType.Player ? _playerProfile : _petProfile;
 
@@ -236,7 +236,7 @@ namespace EquipmentSkinSystem
                 // 保存前同步 Dictionary 到 List
                 _playerProfile.SyncToList();
                 _petProfile.SyncToList();
-                
+
                 var sb = new System.Text.StringBuilder();
                 sb.AppendLine("{");
                 sb.AppendLine($"    \"CurrentCharacterType\": {(int)_currentCharacterType},");
@@ -250,7 +250,7 @@ namespace EquipmentSkinSystem
                 sb.Append(SerializeAppSettings(_appSettings, "        "));
                 sb.AppendLine();
                 sb.Append("}");
-                
+
                 string json = sb.ToString();
                 Logger.Debug($"SaveToJson - JSON length: {json.Length}");
                 return json;
@@ -273,7 +273,7 @@ namespace EquipmentSkinSystem
             sb.AppendLine($"{indent}    \"ConfigVersion\": {profile.ConfigVersion},");
             sb.AppendLine($"{indent}    \"ProfileName\": \"{profile.ProfileName}\",");
             sb.AppendLine($"{indent}    \"SlotConfigsList\": [");
-            
+
             if (profile.SlotConfigsList != null)
             {
                 for (int i = 0; i < profile.SlotConfigsList.Count; i++)
@@ -294,10 +294,10 @@ namespace EquipmentSkinSystem
                     }
                 }
             }
-            
+
             sb.AppendLine($"{indent}    ]");
             sb.Append($"{indent}}}");
-            
+
             return sb.ToString();
         }
 
@@ -382,7 +382,7 @@ namespace EquipmentSkinSystem
                         _petProfile = new CharacterSkinProfile("Pet");
                         _currentCharacterType = CharacterType.Player; // 舊格式默認為玩家
                         _appSettings = new AppSettings();
-                        
+
                         // 自動保存為新格式
                         DataPersistence.SaveConfig();
                         Logger.Info("Config migrated to new format");
@@ -414,7 +414,7 @@ namespace EquipmentSkinSystem
         private AppSettings ParseAppSettings(string json)
         {
             var settings = new AppSettings();
-            
+
             try
             {
                 var debugMatch = System.Text.RegularExpressions.Regex.Match(json, @"""EnableDebugLog"":\s*(true|false)");
@@ -453,7 +453,7 @@ namespace EquipmentSkinSystem
             {
                 Logger.Error("Failed to parse AppSettings", e);
             }
-            
+
             return settings;
         }
 
@@ -472,7 +472,7 @@ namespace EquipmentSkinSystem
             // 載入後重建 Dictionary
             profile.RebuildDictionary();
             Logger.Debug($"Loaded {name} profile with {profile.SlotConfigsList.Count} slots");
-            
+
             // 驗證所有槽位都存在
             bool needsUpdate = false;
             foreach (EquipmentSlotType slotType in Enum.GetValues(typeof(EquipmentSlotType)))
@@ -484,7 +484,7 @@ namespace EquipmentSkinSystem
                     needsUpdate = true;
                 }
             }
-            
+
             if (needsUpdate)
             {
                 profile.RebuildDictionary();
@@ -492,14 +492,14 @@ namespace EquipmentSkinSystem
                 Logger.Info($"{name} profile updated with missing slots");
             }
         }
-        
+
         /// <summary>
         /// 手動解析 JSON（簡單的解析器）
         /// </summary>
         private CharacterSkinProfile ParseJson(string json)
         {
             var profile = new CharacterSkinProfile("Default");
-            
+
             try
             {
                 // 提取 ConfigVersion
@@ -508,29 +508,29 @@ namespace EquipmentSkinSystem
                 {
                     profile.ConfigVersion = int.Parse(versionMatch.Groups[1].Value);
                 }
-                
+
                 // 提取 ProfileName
                 var nameMatch = System.Text.RegularExpressions.Regex.Match(json, @"""ProfileName"":\s*""([^""]*)""");
                 if (nameMatch.Success)
                 {
                     profile.ProfileName = nameMatch.Groups[1].Value;
                 }
-                
+
                 // 提取 SlotConfigsList
                 var slotsMatch = System.Text.RegularExpressions.Regex.Match(json, @"""SlotConfigsList"":\s*\[(.*?)\]", System.Text.RegularExpressions.RegexOptions.Singleline);
                 if (slotsMatch.Success)
                 {
                     string slotsJson = slotsMatch.Groups[1].Value;
                     var slotMatches = System.Text.RegularExpressions.Regex.Matches(slotsJson, @"\{[^}]+\}");
-                    
+
                     foreach (System.Text.RegularExpressions.Match slotMatch in slotMatches)
                     {
                         string slotJson = slotMatch.Value;
-                        
+
                         var slotTypeMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""SlotType"":\s*(\d+)");
                         var skinIDMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""SkinItemTypeID"":\s*(-?\d+)");
                         var useSkinMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""UseSkin"":\s*(true|false)");
-                        
+
                         if (slotTypeMatch.Success && skinIDMatch.Success && useSkinMatch.Success)
                         {
                             var slot = new SlotSkinConfig((EquipmentSlotType)int.Parse(slotTypeMatch.Groups[1].Value))
@@ -541,7 +541,7 @@ namespace EquipmentSkinSystem
                             profile.SlotConfigsList.Add(slot);
                         }
                     }
-                    
+
                     Logger.Debug($"ParseJson - Parsed {profile.SlotConfigsList.Count} slots");
                 }
             }
@@ -549,10 +549,10 @@ namespace EquipmentSkinSystem
             {
                 Logger.Error("Failed to parse JSON", e);
             }
-            
+
             return profile;
         }
-        
+
         /// <summary>
         /// 配置版本遷移
         /// </summary>
@@ -561,7 +561,7 @@ namespace EquipmentSkinSystem
             // 創建新版本的配置
             CharacterSkinProfile newProfile = new CharacterSkinProfile(oldProfile.ProfileName);
             newProfile.ConfigVersion = targetVersion;
-            
+
             // 遷移舊配置的資料（保留所有已設定的值）
             if (oldProfile.SlotConfigsList != null)
             {
@@ -585,7 +585,7 @@ namespace EquipmentSkinSystem
                     }
                 }
             }
-            
+
             return newProfile;
         }
 

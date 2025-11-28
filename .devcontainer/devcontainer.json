@@ -1,7 +1,7 @@
 {
   "name": "Duckov Modding Development",
   "image": "mcr.microsoft.com/dotnet/sdk:8.0",
-  
+
   // 設定容器的功能
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
@@ -16,7 +16,7 @@
   "mounts": [
     "source=${localWorkspaceFolder}/duckov-dlls,target=/duckov,type=bind,readonly"
   ],
-  
+
   // 方案 B：直接從 Windows 掛載（如果您想用原始遊戲目錄）
   // "mounts": [
   //   "source=/mnt/c/Program Files (x86)/Steam/steamapps/common/Escape from Duckov,target=/duckov,type=bind,readonly"
@@ -37,7 +37,8 @@
         "ms-dotnettools.csdevkit",
         "ms-dotnettools.vscode-dotnet-runtime",
         "formulahendry.dotnet-test-explorer",
-        "kreativ-software.csharpextensions"
+        "kreativ-software.csharpextensions",
+        "anthropic.claude-code"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
@@ -59,7 +60,3 @@
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind"
 }
-
-
-
-

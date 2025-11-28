@@ -13,7 +13,7 @@ namespace EquipmentSkinSystem
     {
         private static Dictionary<string, Dictionary<string, string>>? _translations;
         private static string _currentLanguage = "zh-TW";
-        
+
         /// <summary>
         /// 語言變更事件
         /// </summary>
@@ -62,14 +62,14 @@ namespace EquipmentSkinSystem
                 var instance = Traverse.Create(localizationManagerType)
                     .Property("Instance")
                     .GetValue();
-                
+
                 if (instance != null)
                 {
                     // 嘗試取得 CurrentLanguage 屬性
                     currentLanguage = Traverse.Create(instance)
                         .Property("CurrentLanguage")
                         .GetValue<SystemLanguage>();
-                    
+
                     // 如果屬性不存在，嘗試字段
                     if (currentLanguage == default(SystemLanguage))
                     {
@@ -84,7 +84,7 @@ namespace EquipmentSkinSystem
                     currentLanguage = Traverse.Create(localizationManagerType)
                         .Property("CurrentLanguage")
                         .GetValue<SystemLanguage>();
-                    
+
                     if (currentLanguage == default(SystemLanguage))
                     {
                         currentLanguage = Traverse.Create(localizationManagerType)
@@ -125,7 +125,7 @@ namespace EquipmentSkinSystem
         {
             // 記錄實際收到的語言值，方便調試
             Logger.Info($"[Language] Converting SystemLanguage: {systemLanguage} ({(int)systemLanguage})");
-            
+
             switch (systemLanguage)
             {
                 case SystemLanguage.ChineseTraditional:
@@ -187,12 +187,12 @@ namespace EquipmentSkinSystem
                 ["UI_Close"] = "關閉",
                 ["UI_Preview"] = "角色預覽",
                 ["UI_SkinID_Placeholder"] = "外觀ID",
-                
+
                 // 左側裝備清單面板
                 ["UI_EquipmentList"] = "裝備清單",
                 ["UI_FilterByTag"] = "依標籤過濾",
                 ["UI_HideEquipment"] = "不顯示",
-                
+
                 // Tag 名稱（用於下拉選單顯示）
                 ["Tag_Armor"] = "護甲",
                 ["Tag_Helmat"] = "頭盔",
@@ -211,7 +211,7 @@ namespace EquipmentSkinSystem
                 ["Settings_Title"] = "功能設定",
                 ["Settings_Tab_Log"] = "日誌",
                 ["Settings_Tab_Language"] = "語言",
-                
+
                 // 日誌設定
                 ["Log_Debug"] = "調試日誌 (Debug)",
                 ["Log_Info"] = "資訊日誌 (Info)",
@@ -240,12 +240,12 @@ namespace EquipmentSkinSystem
                 ["UI_Close"] = "关闭",
                 ["UI_Preview"] = "角色预览",
                 ["UI_SkinID_Placeholder"] = "外观ID",
-                
+
                 // 左側裝備清單面板
                 ["UI_EquipmentList"] = "装备清单",
                 ["UI_FilterByTag"] = "依标签过滤",
                 ["UI_HideEquipment"] = "不显示",
-                
+
                 // Tag 名稱（用於下拉選單顯示）
                 ["Tag_Armor"] = "护甲",
                 ["Tag_Helmat"] = "头盔",
@@ -264,7 +264,7 @@ namespace EquipmentSkinSystem
                 ["Settings_Title"] = "功能设定",
                 ["Settings_Tab_Log"] = "日志",
                 ["Settings_Tab_Language"] = "语言",
-                
+
                 // 日誌設定
                 ["Log_Debug"] = "调试日志 (Debug)",
                 ["Log_Info"] = "信息日志 (Info)",
@@ -293,12 +293,12 @@ namespace EquipmentSkinSystem
                 ["UI_Close"] = "Close",
                 ["UI_Preview"] = "Character Preview",
                 ["UI_SkinID_Placeholder"] = "Skin ID",
-                
+
                 // 左側裝備清單面板
                 ["UI_EquipmentList"] = "Equipment List",
                 ["UI_FilterByTag"] = "Filter by Tag",
                 ["UI_HideEquipment"] = "Hide",
-                
+
                 // Tag 名稱（用於下拉選單顯示）
                 ["Tag_Armor"] = "Armor",
                 ["Tag_Helmat"] = "Helmet",
@@ -317,7 +317,7 @@ namespace EquipmentSkinSystem
                 ["Settings_Title"] = "Settings",
                 ["Settings_Tab_Log"] = "Log",
                 ["Settings_Tab_Language"] = "Language",
-                
+
                 // 日誌設定
                 ["Log_Debug"] = "Debug Log",
                 ["Log_Info"] = "Info Log",
@@ -633,7 +633,7 @@ namespace EquipmentSkinSystem
                     LoadTranslations();
                 }
 
-                if (_translations != null && 
+                if (_translations != null &&
                     _translations.TryGetValue(_currentLanguage, out var langDict) &&
                     langDict.TryGetValue(key, out var value))
                 {
@@ -641,7 +641,7 @@ namespace EquipmentSkinSystem
                 }
 
                 // 如果找不到翻譯，fallback 到英文
-                if (_currentLanguage != "en-US" && 
+                if (_currentLanguage != "en-US" &&
                     _translations != null)
                 {
                     if (_translations.TryGetValue("en-US", out var enDict) &&
@@ -723,7 +723,7 @@ namespace EquipmentSkinSystem
                 {
                     Logger.Info($"Language changed detected: {_currentLanguage} -> {gameLanguage}");
                     _currentLanguage = gameLanguage;
-                    
+
                     // 觸發語言變更事件，通知 UI 更新
                     OnLanguageChanged?.Invoke(_currentLanguage);
                 }
@@ -756,14 +756,14 @@ namespace EquipmentSkinSystem
                 var instance = Traverse.Create(localizationManagerType)
                     .Property("Instance")
                     .GetValue();
-                
+
                 if (instance != null)
                 {
                     // 嘗試取得 OnSetLanguage 字段
                     onSetLanguageEvent = Traverse.Create(instance)
                         .Field("OnSetLanguage")
                         .GetValue<System.Action<SystemLanguage>>();
-                    
+
                     // 如果字段不存在，嘗試屬性
                     if (onSetLanguageEvent == null)
                     {
@@ -778,7 +778,7 @@ namespace EquipmentSkinSystem
                     onSetLanguageEvent = Traverse.Create(localizationManagerType)
                         .Field("OnSetLanguage")
                         .GetValue<System.Action<SystemLanguage>>();
-                    
+
                     if (onSetLanguageEvent == null)
                     {
                         onSetLanguageEvent = Traverse.Create(localizationManagerType)
@@ -816,7 +816,7 @@ namespace EquipmentSkinSystem
                 {
                     _currentLanguage = newLanguageCode;
                     Logger.Info($"Language changed to: {_currentLanguage} (from game)");
-                    
+
                     // 觸發語言變更事件，通知 UI 更新
                     OnLanguageChanged?.Invoke(_currentLanguage);
                 }
@@ -828,4 +828,3 @@ namespace EquipmentSkinSystem
         }
     }
 }
-

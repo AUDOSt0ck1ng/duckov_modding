@@ -11,7 +11,7 @@ namespace EquipmentSkinSystem
     public static class ConfigReader
     {
         private static Dictionary<string, Dictionary<string, string>>? _configCache;
-        
+
         /// <summary>
         /// 獲取 info.ini 文件路徑
         /// info.ini 和 DLL 在同一目錄（Mod 文件夾根目錄）
@@ -22,17 +22,17 @@ namespace EquipmentSkinSystem
             // info.ini 就在這個目錄下
             string modDirectory = Path.Combine(Application.dataPath, "Mods", "EquipmentSkinSystem");
             string configPath = Path.Combine(modDirectory, "info.ini");
-            
+
             // 如果文件存在，直接返回
             if (File.Exists(configPath))
             {
                 return configPath;
             }
-            
+
             // 如果不存在，返回這個路徑用於創建
             return configPath;
         }
-        
+
         private static string ConfigFilePath => GetConfigFilePath();
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace EquipmentSkinSystem
                     LoadConfig();
                 }
 
-                if (_configCache != null && 
+                if (_configCache != null &&
                     _configCache.TryGetValue(section, out var sectionDict) &&
                     sectionDict.TryGetValue(key, out var value))
                 {
@@ -91,7 +91,7 @@ namespace EquipmentSkinSystem
         private static void LoadConfig()
         {
             _configCache = new Dictionary<string, Dictionary<string, string>>();
-            
+
             string filePath = ConfigFilePath;
             if (!File.Exists(filePath))
             {
@@ -107,7 +107,7 @@ namespace EquipmentSkinSystem
                 foreach (string line in lines)
                 {
                     string trimmedLine = line.Trim();
-                    
+
                     // 跳過空行和註釋
                     if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith(";") || trimmedLine.StartsWith("#"))
                         continue;
@@ -156,4 +156,3 @@ namespace EquipmentSkinSystem
         }
     }
 }
-

@@ -101,7 +101,7 @@
        {
            // v1 -> v2 的特殊遷移邏輯
        }
-       
+
        // ... 其他遷移邏輯
    }
    ```
@@ -157,4 +157,3 @@ C:\Users\你的用戶名\AppData\LocalLow\TeamSoda\Duckov\EquipmentSkinSystem\sk
 ```
 ~/Library/Application Support/TeamSoda/Duckov/EquipmentSkinSystem/skin_config.json
 ```
-

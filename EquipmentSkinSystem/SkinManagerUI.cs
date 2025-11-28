@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 using Duckov.UI;
 using HarmonyLib;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace EquipmentSkinSystem
 {
@@ -32,25 +32,25 @@ namespace EquipmentSkinSystem
         private GameObject? _logTabContent;
         private GameObject? _languageTabContent;
         private string _currentTab = "Log";
-        
+
         // 裝備選擇面板
         private GameObject? _equipmentSelectorPanel;
         private TMP_Dropdown? _tagFilterDropdown;
         private ScrollRect? _equipmentScrollRect;
         private GameObject? _equipmentContentContainer;
         private string _currentSelectedTag = "Armor"; // 預設選擇 Armor
-        
+
         // 雙擊檢測
         private int _lastClickedTypeID = -1;
         private float _lastClickTime = 0f;
         private const float DOUBLE_CLICK_TIME = 0.3f; // 雙擊時間間隔（秒）
-        
+
         // 保存所有需要語言更新的文字元素
         private Dictionary<string, TextMeshProUGUI> _localizedTexts = new Dictionary<string, TextMeshProUGUI>();
-        
+
         // 保存所有需要語言更新的 placeholder 文字元素
         private Dictionary<string, TextMeshProUGUI> _localizedPlaceholders = new Dictionary<string, TextMeshProUGUI>();
-        
+
         // 角色預覽系統
         private CharacterPreview? _characterPreview;
         private RawImage? _previewImage;
@@ -72,11 +72,11 @@ namespace EquipmentSkinSystem
             InitializePreview();
             // 然後創建 UI（UI 中會使用預覽系統）
             CreateUI();
-            
+
             // 訂閱語言變更事件
             Localization.OnLanguageChanged += OnLocalizationLanguageChanged;
         }
-        
+
         /// <summary>
         /// 當 Localization 語言變更時的回調
         /// </summary>
@@ -92,7 +92,7 @@ namespace EquipmentSkinSystem
                 Logger.Error($"Error handling localization language change in UI: {e.Message}", e);
             }
         }
-        
+
         /// <summary>
         /// 初始化角色預覽系統
         /// </summary>
@@ -105,7 +105,7 @@ namespace EquipmentSkinSystem
                 previewObj.transform.SetParent(transform);
                 _characterPreview = previewObj.AddComponent<CharacterPreview>();
                 _characterPreview.Initialize();
-                
+
                 Logger.Debug("Character preview initialized");
             }
             catch (Exception e)
@@ -125,7 +125,7 @@ namespace EquipmentSkinSystem
                 _roundedSprite = CreateRoundedSprite(256, 256, 8);         // 主面板
                 _roundedButtonSprite = CreateRoundedSprite(128, 64, 6);    // 按鈕
                 _roundedSlotSprite = CreateRoundedSprite(128, 64, 4);      // 槽位
-                
+
                 // 創建主面板
                 _uiPanel = new GameObject("EquipmentSkinUI");
                 _uiPanel.transform.SetParent(null);
@@ -142,10 +142,10 @@ namespace EquipmentSkinSystem
                 GraphicRaycaster raycaster = _uiPanel.AddComponent<GraphicRaycaster>();
                 raycaster.ignoreReversedGraphics = true;
                 raycaster.blockingObjects = GraphicRaycaster.BlockingObjects.None;
-                
+
                 // 確保有 EventSystem（UI 互動必需）
                 EnsureEventSystem();
-                
+
                 Logger.Debug("Canvas created with GraphicRaycaster");
 
                 // 創建背景面板
@@ -226,7 +226,7 @@ namespace EquipmentSkinSystem
             text.alignment = TextAlignmentOptions.Center;
             text.color = new Color(1f, 0.95f, 0.85f, 1f); // 暖白色
             text.fontStyle = FontStyles.Bold;
-            
+
             // 添加文字陰影
             Shadow textShadow = titleObj.AddComponent<Shadow>();
             textShadow.effectColor = new Color(0, 0, 0, 0.8f);
@@ -296,17 +296,19 @@ namespace EquipmentSkinSystem
             // 玩家按鈕（左側，相對於容器中心）
             _playerButton = CreateCharacterButton(toggleContainer.transform, Localization.Get("UI_Player", "玩家"), CharacterType.Player);
             var playerText = _playerButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (playerText != null) _localizedTexts["UI_Player"] = playerText;
+            if (playerText != null)
+                _localizedTexts["UI_Player"] = playerText;
             RectTransform playerRect = _playerButton.GetComponent<RectTransform>();
             playerRect.anchorMin = new Vector2(0.5f, 0.5f);
             playerRect.anchorMax = new Vector2(0.5f, 0.5f);
             playerRect.pivot = new Vector2(0.5f, 0.5f);
             playerRect.anchoredPosition = new Vector2(-75, 0); // 左側：-75 = -(140/2 + 10/2)
-            
+
             // 狗按鈕（右側，相對於容器中心）
             _petButton = CreateCharacterButton(toggleContainer.transform, Localization.Get("UI_Pet", "狗"), CharacterType.Pet);
             var petText = _petButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (petText != null) _localizedTexts["UI_Pet"] = petText;
+            if (petText != null)
+                _localizedTexts["UI_Pet"] = petText;
             RectTransform petRect = _petButton.GetComponent<RectTransform>();
             petRect.anchorMin = new Vector2(0.5f, 0.5f);
             petRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -333,15 +335,15 @@ namespace EquipmentSkinSystem
             image.raycastTarget = true; // 確保可以接收點擊
 
             Button button = buttonObj.AddComponent<Button>();
-            
+
             // 根據當前選中狀態設置顏色
             bool isSelected = EquipmentSkinDataManager.Instance.CurrentCharacterType == characterType;
             ColorBlock colors = button.colors;
-            colors.normalColor = isSelected 
-                ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+            colors.normalColor = isSelected
+                ? new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f)  // 選中：亮藍色
                 : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
-            colors.highlightedColor = new Color(157f/255f, 220f/255f, 235f/255f, 1f);
-            colors.pressedColor = new Color(3f/255f, 159f/255f, 196f/255f, 1f);
+            colors.highlightedColor = new Color(157f / 255f, 220f / 255f, 235f / 255f, 1f);
+            colors.pressedColor = new Color(3f / 255f, 159f / 255f, 196f / 255f, 1f);
             colors.selectedColor = colors.normalColor;
             colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
             button.colors = colors;
@@ -373,36 +375,36 @@ namespace EquipmentSkinSystem
             try
             {
                 Logger.Debug($"Character type changed to: {newType}");
-                
+
                 // 切換角色類型
                 EquipmentSkinDataManager.Instance.SetCurrentCharacterType(newType);
-                
+
                 // 立即保存 CurrentCharacterType，確保切換標籤時就保存狀態
                 DataPersistence.SaveConfig();
                 Logger.Debug($"CurrentCharacterType saved: {newType}");
-                
+
                 // 更新按鈕顏色狀態
                 UpdateCharacterButtonColors();
-                
+
                 // 重新載入 UI（顯示新角色的配置）
                 RefreshUIForCurrentCharacter();
-                
+
                 // 立即更新當前裝備 ID 顯示
                 UpdateCurrentEquipmentDisplay();
-                
+
                 // 刷新裝備渲染
                 RefreshAllEquipment();
-                
+
                 // 切換角色時重置相機
                 if (_characterPreview != null)
                 {
                     _characterPreview.SetPreviewCharacter(newType, resetCamera: true);
-                    
+
                     // 更新預覽圖像
                     if (_previewImage != null && _characterPreview.PreviewTexture != null)
                     {
                         _previewImage.texture = _characterPreview.PreviewTexture;
-                        
+
                         // 確保拖曳控制器已設置預覽引用
                         PreviewDragController? dragController = _previewImage.GetComponent<PreviewDragController>();
                         if (dragController != null)
@@ -410,7 +412,7 @@ namespace EquipmentSkinSystem
                             dragController.SetCharacterPreview(_characterPreview);
                         }
                     }
-                    
+
                     // 更新高度滑桿
                     if (_previewHeightSlider != null)
                     {
@@ -430,24 +432,24 @@ namespace EquipmentSkinSystem
         private void UpdateCharacterButtonColors()
         {
             var currentType = EquipmentSkinDataManager.Instance.CurrentCharacterType;
-            
+
             // 更新玩家按鈕
             if (_playerButton != null)
             {
                 var colors = _playerButton.colors;
                 colors.normalColor = currentType == CharacterType.Player
-                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+                    ? new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f)  // 選中：亮藍色
                     : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
                 colors.selectedColor = colors.normalColor;
                 _playerButton.colors = colors;
             }
-            
+
             // 更新狗按鈕
             if (_petButton != null)
             {
                 var colors = _petButton.colors;
                 colors.normalColor = currentType == CharacterType.Pet
-                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+                    ? new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f)  // 選中：亮藍色
                     : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
                 colors.selectedColor = colors.normalColor;
                 _petButton.colors = colors;
@@ -458,12 +460,12 @@ namespace EquipmentSkinSystem
         {
             // 重新載入當前角色的配置到 UI
             var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
-            
+
             foreach (var kvp in _slotUIElements)
             {
                 var slotType = kvp.Key;
                 var elements = kvp.Value;
-                
+
                 if (profile.SlotConfigs.TryGetValue(slotType, out var config))
                 {
                     // 顯示 ID：0 = 空欄（顯示 placeholder "外觀ID"），-1 或正數 = 顯示數字
@@ -478,13 +480,13 @@ namespace EquipmentSkinSystem
                     elements.UseSkinToggle.isOn = config.UseSkin;
                 }
             }
-            
+
             // 更新預覽
             UpdatePreview();
-            
+
             Logger.Debug($"UI refreshed for {EquipmentSkinDataManager.Instance.CurrentCharacterType}");
         }
-        
+
         /// <summary>
         /// 創建角色預覽視窗
         /// </summary>
@@ -495,14 +497,14 @@ namespace EquipmentSkinSystem
                 // 創建預覽容器（右側）
                 GameObject previewContainer = new GameObject("PreviewContainer");
                 previewContainer.transform.SetParent(parent, false);
-                
+
                 RectTransform previewRect = previewContainer.AddComponent<RectTransform>();
                 previewRect.anchorMin = new Vector2(1f, 0.5f);
                 previewRect.anchorMax = new Vector2(1f, 0.5f);
                 previewRect.sizeDelta = new Vector2(340, 400); // 寬度從310增加到340（再加大30）
                 previewRect.anchoredPosition = new Vector2(200, 0); // 右側，往右移動60（從140改為200）
                 previewRect.pivot = new Vector2(0.5f, 0.5f);
-                
+
                 // 背景（使用與左側清單相同的顏色）
                 Image previewBg = previewContainer.AddComponent<Image>();
                 if (_roundedSlotSprite != null)
@@ -511,17 +513,17 @@ namespace EquipmentSkinSystem
                     previewBg.type = Image.Type.Sliced;
                 }
                 previewBg.color = new Color(0.12f, 0.18f, 0.25f, 0.92f); // 與左側清單面板相同的顏色
-                
+
                 // 標題
                 GameObject titleObj = new GameObject("PreviewTitle");
                 titleObj.transform.SetParent(previewContainer.transform, false);
-                
+
                 RectTransform titleRect = titleObj.AddComponent<RectTransform>();
                 titleRect.anchorMin = new Vector2(0.5f, 1f);
                 titleRect.anchorMax = new Vector2(0.5f, 1f);
                 titleRect.sizeDelta = new Vector2(320, 30); // 寬度從290增加到320（配合面板寬度）
                 titleRect.anchoredPosition = new Vector2(0, -20); // 往上移動20（從-40改為-20）
-                
+
                 TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
                 titleText.text = Localization.Get("UI_Preview", "角色預覽");
                 _localizedTexts["UI_Preview"] = titleText;
@@ -529,36 +531,36 @@ namespace EquipmentSkinSystem
                 titleText.alignment = TextAlignmentOptions.Center;
                 titleText.color = new Color(1f, 0.95f, 0.85f, 1f);
                 titleText.fontStyle = FontStyles.Bold;
-                
+
                 // 預覽圖像容器
                 GameObject imageContainer = new GameObject("PreviewImageContainer");
                 imageContainer.transform.SetParent(previewContainer.transform, false);
-                
+
                 RectTransform imageRect = imageContainer.AddComponent<RectTransform>();
                 imageRect.anchorMin = new Vector2(0.5f, 0.5f);
                 imageRect.anchorMax = new Vector2(0.5f, 0.5f);
                 imageRect.sizeDelta = new Vector2(320, 350); // 寬度從290增加到320（配合面板寬度）
                 imageRect.anchoredPosition = new Vector2(0, -20);
-                
+
                 // 預覽圖像背景
                 Image imageBg = imageContainer.AddComponent<Image>();
                 imageBg.color = new Color(0.05f, 0.05f, 0.1f, 1f);
-                
+
                 // 預覽 RawImage
                 GameObject previewImageObj = new GameObject("PreviewImage");
                 previewImageObj.transform.SetParent(imageContainer.transform, false);
-                
+
                 RectTransform previewImageRect = previewImageObj.AddComponent<RectTransform>();
                 previewImageRect.anchorMin = Vector2.zero;
                 previewImageRect.anchorMax = Vector2.one;
                 previewImageRect.sizeDelta = Vector2.zero;
                 previewImageRect.offsetMin = new Vector2(5, 5);
                 previewImageRect.offsetMax = new Vector2(-5, -5);
-                
+
                 _previewImage = previewImageObj.AddComponent<RawImage>();
                 _previewImage.color = Color.white;
                 _previewImage.raycastTarget = true; // 啟用射線檢測，以便接收滑鼠事件
-                
+
                 // 添加拖曳控制器
                 PreviewDragController dragController = previewImageObj.AddComponent<PreviewDragController>();
                 // 設置預覽引用（此時 _characterPreview 應該已經初始化）
@@ -570,10 +572,10 @@ namespace EquipmentSkinSystem
                 {
                     Logger.Warning("CharacterPreview is null when creating drag controller, will set later");
                 }
-                
+
                 // 創建高度調整滑桿（垂直，在預覽圖像右側）
                 CreateHeightSlider(imageContainer.transform);
-                
+
                 Logger.Debug("Preview window created with drag controller and height slider");
             }
             catch (Exception e)
@@ -581,7 +583,7 @@ namespace EquipmentSkinSystem
                 Logger.Error("Failed to create preview window", e);
             }
         }
-        
+
         /// <summary>
         /// 創建高度調整滑桿
         /// </summary>
@@ -592,79 +594,79 @@ namespace EquipmentSkinSystem
                 // 創建滑桿容器
                 GameObject sliderObj = new GameObject("HeightSlider");
                 sliderObj.transform.SetParent(parent, false);
-                
+
                 RectTransform sliderRect = sliderObj.AddComponent<RectTransform>();
                 sliderRect.anchorMin = new Vector2(1f, 0f);
                 sliderRect.anchorMax = new Vector2(1f, 1f);
                 sliderRect.sizeDelta = new Vector2(20, 0);
                 sliderRect.anchoredPosition = new Vector2(10, 0); // 在右側，稍微偏右
-                
+
                 // 創建滑桿背景
                 GameObject backgroundObj = new GameObject("Background");
                 backgroundObj.transform.SetParent(sliderObj.transform, false);
-                
+
                 RectTransform bgRect = backgroundObj.AddComponent<RectTransform>();
                 bgRect.anchorMin = Vector2.zero;
                 bgRect.anchorMax = Vector2.one;
                 bgRect.sizeDelta = Vector2.zero;
                 bgRect.offsetMin = new Vector2(0, 10);
                 bgRect.offsetMax = new Vector2(0, -10);
-                
+
                 Image bgImage = backgroundObj.AddComponent<Image>();
                 bgImage.color = new Color(0.2f, 0.2f, 0.25f, 0.8f);
-                
+
                 // 創建填充區域
                 GameObject fillAreaObj = new GameObject("Fill Area");
                 fillAreaObj.transform.SetParent(sliderObj.transform, false);
-                
+
                 RectTransform fillAreaRect = fillAreaObj.AddComponent<RectTransform>();
                 fillAreaRect.anchorMin = Vector2.zero;
                 fillAreaRect.anchorMax = Vector2.one;
                 fillAreaRect.sizeDelta = Vector2.zero;
                 fillAreaRect.offsetMin = new Vector2(0, 10);
                 fillAreaRect.offsetMax = new Vector2(0, -10);
-                
+
                 GameObject fillObj = new GameObject("Fill");
                 fillObj.transform.SetParent(fillAreaObj.transform, false);
-                
+
                 RectTransform fillRect = fillObj.AddComponent<RectTransform>();
                 fillRect.anchorMin = new Vector2(0, 0);
                 fillRect.anchorMax = new Vector2(1, 1);
                 fillRect.sizeDelta = Vector2.zero;
-                
+
                 Image fillImage = fillObj.AddComponent<Image>();
-                fillImage.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f); // 使用主題色
-                
+                fillImage.color = new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f); // 使用主題色
+
                 // 創建滑塊（Handle）
                 GameObject handleAreaObj = new GameObject("Handle Slide Area");
                 handleAreaObj.transform.SetParent(sliderObj.transform, false);
-                
+
                 RectTransform handleAreaRect = handleAreaObj.AddComponent<RectTransform>();
                 handleAreaRect.anchorMin = Vector2.zero;
                 handleAreaRect.anchorMax = Vector2.one;
                 handleAreaRect.sizeDelta = Vector2.zero;
                 handleAreaRect.offsetMin = new Vector2(0, 10);
                 handleAreaRect.offsetMax = new Vector2(0, -10);
-                
+
                 GameObject handleObj = new GameObject("Handle");
                 handleObj.transform.SetParent(handleAreaObj.transform, false);
-                
+
                 RectTransform handleRect = handleObj.AddComponent<RectTransform>();
                 handleRect.anchorMin = new Vector2(0, 0.5f);
                 handleRect.anchorMax = new Vector2(1, 0.5f);
                 handleRect.sizeDelta = new Vector2(0, 20);
                 handleRect.anchoredPosition = Vector2.zero;
-                
+
                 Image handleImage = handleObj.AddComponent<Image>();
-                handleImage.color = new Color(157f/255f, 220f/255f, 235f/255f, 1f); // 亮藍色
-                
+                handleImage.color = new Color(157f / 255f, 220f / 255f, 235f / 255f, 1f); // 亮藍色
+
                 // 創建 Slider 組件
                 Slider slider = sliderObj.AddComponent<Slider>();
                 slider.fillRect = fillRect;
                 slider.handleRect = handleRect;
                 slider.targetGraphic = handleImage;
                 slider.direction = Slider.Direction.BottomToTop; // 從下到上（0在底部，1在頂部）
-                
+
                 // 設置範圍（稍後在 UpdatePreview 中設置）
                 if (_characterPreview != null)
                 {
@@ -679,17 +681,18 @@ namespace EquipmentSkinSystem
                     slider.maxValue = 1.5f;
                     slider.value = 0.6f;
                 }
-                
+
                 // 添加值變更監聽
-                slider.onValueChanged.AddListener((value) => {
+                slider.onValueChanged.AddListener((value) =>
+                {
                     if (_characterPreview != null)
                     {
                         _characterPreview.SetCameraHeight(value);
                     }
                 });
-                
+
                 _previewHeightSlider = slider;
-                
+
                 Logger.Debug("Height slider created");
             }
             catch (Exception e)
@@ -697,7 +700,7 @@ namespace EquipmentSkinSystem
                 Logger.Error("Failed to create height slider", e);
             }
         }
-        
+
         /// <summary>
         /// 更新預覽
         /// </summary>
@@ -710,20 +713,20 @@ namespace EquipmentSkinSystem
                     Logger.Warning("Character preview is null");
                     return;
                 }
-                
+
                 // 根據當前選中的角色類型來設置預覽
                 var currentType = EquipmentSkinDataManager.Instance.CurrentCharacterType;
                 Logger.Debug($"UpdatePreview - Current character type from manager: {currentType}");
-                
+
                 // 直接設置預覽（角色應該已經在場景中）
                 // 不重置相機，保持用戶調整的角度
                 _characterPreview.SetPreviewCharacter(currentType, resetCamera: false);
-                
+
                 // 更新預覽圖像
                 if (_previewImage != null && _characterPreview.PreviewTexture != null)
                 {
                     _previewImage.texture = _characterPreview.PreviewTexture;
-                    
+
                     // 確保拖曳控制器已設置預覽引用
                     PreviewDragController? dragController = _previewImage.GetComponent<PreviewDragController>();
                     if (dragController != null)
@@ -731,7 +734,7 @@ namespace EquipmentSkinSystem
                         dragController.SetCharacterPreview(_characterPreview);
                     }
                 }
-                
+
                 // 更新高度滑桿
                 if (_previewHeightSlider != null)
                 {
@@ -740,7 +743,7 @@ namespace EquipmentSkinSystem
                     _previewHeightSlider.maxValue = max;
                     _previewHeightSlider.value = _characterPreview.GetCameraHeight();
                 }
-                
+
                 Logger.Debug($"Preview updated for {currentType}");
             }
             catch (Exception e)
@@ -768,7 +771,7 @@ namespace EquipmentSkinSystem
             }
             // 更深的背景色
             scrollBg.color = new Color(0.08f, 0.12f, 0.18f, 0.7f);
-            
+
             // 添加 Mask 組件裁剪超出內容
             Mask mask = scrollViewObj.AddComponent<Mask>();
             mask.showMaskGraphic = true;
@@ -862,7 +865,8 @@ namespace EquipmentSkinSystem
             // 清空按鈕（最右邊）
             elements.ClearButton = CreateButton(slotObj.transform, Localization.Get("UI_Clear", "清空"), () => OnClearSlotClicked(slotType));
             var clearText = elements.ClearButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (clearText != null) _localizedTexts[$"UI_Clear_{slotType}"] = clearText;
+            if (clearText != null)
+                _localizedTexts[$"UI_Clear_{slotType}"] = clearText;
 
             _slotUIElements[slotType] = elements;
         }
@@ -912,7 +916,7 @@ namespace EquipmentSkinSystem
                 bgImage.type = Image.Type.Sliced;
             }
             bgImage.color = new Color(0.2f, 0.25f, 0.3f, 1f); // 深灰藍色
-            
+
             // 添加邊框
             Outline bgOutline = bgObj.AddComponent<Outline>();
             bgOutline.effectColor = new Color(0.4f, 0.45f, 0.5f, 0.8f);
@@ -925,14 +929,14 @@ namespace EquipmentSkinSystem
             checkRect.anchorMin = new Vector2(0.15f, 0.15f);
             checkRect.anchorMax = new Vector2(0.85f, 0.85f);
             checkRect.sizeDelta = Vector2.zero;
-            
+
             TextMeshProUGUI checkText = checkmarkObj.AddComponent<TextMeshProUGUI>();
             checkText.text = "✓";
             checkText.fontSize = 26;
             checkText.alignment = TextAlignmentOptions.Center;
             checkText.color = new Color(1f, 0.6f, 0.2f, 1f); // 橙色勾勾（遊戲風格）
             checkText.fontStyle = FontStyles.Bold;
-            
+
             // 添加發光效果
             Shadow checkShadow = checkmarkObj.AddComponent<Shadow>();
             checkShadow.effectColor = new Color(1f, 0.5f, 0f, 0.8f);
@@ -963,7 +967,7 @@ namespace EquipmentSkinSystem
                 bgImage.type = Image.Type.Sliced;
             }
             bgImage.color = new Color(0.1f, 0.1f, 0.1f, 0.9f); // 深灰黑色
-            
+
             // 添加邊框（淺灰色邊框）
             Outline outline = inputObj.AddComponent<Outline>();
             outline.effectColor = new Color(0.4f, 0.4f, 0.4f, 0.6f);
@@ -1010,7 +1014,7 @@ namespace EquipmentSkinSystem
             placeholderText.fontSize = 14;
             placeholderText.color = new Color(0.5f, 0.5f, 0.5f, 1f);
             placeholderText.alignment = TextAlignmentOptions.Center;
-            
+
             // 如果提供了 placeholderKey，保存到字典中以便語言切換時更新
             if (!string.IsNullOrEmpty(placeholderKey))
             {
@@ -1050,17 +1054,18 @@ namespace EquipmentSkinSystem
             Button button = buttonObj.AddComponent<Button>();
             button.targetGraphic = image;
             button.interactable = true;
-            button.onClick.AddListener(() => {
+            button.onClick.AddListener(() =>
+            {
                 Logger.Debug($"Button '{text}' clicked!");
                 onClick?.Invoke();
             });
 
             // 遊戲風格的顏色變化（使用你指定的 RGB 顏色）
             ColorBlock colors = button.colors;
-            colors.normalColor = new Color(112f/255f, 204f/255f, 224f/255f, 1f);     // 正常: RGB(112,204,224)
-            colors.highlightedColor = new Color(157f/255f, 220f/255f, 235f/255f, 1f); // 變亮: RGB(157,220,235)
-            colors.pressedColor = new Color(3f/255f, 159f/255f, 196f/255f, 1f);       // 變暗: RGB(3,159,196)
-            colors.selectedColor = new Color(112f/255f, 204f/255f, 224f/255f, 1f);   // 選中後回到正常色
+            colors.normalColor = new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f);     // 正常: RGB(112,204,224)
+            colors.highlightedColor = new Color(157f / 255f, 220f / 255f, 235f / 255f, 1f); // 變亮: RGB(157,220,235)
+            colors.pressedColor = new Color(3f / 255f, 159f / 255f, 196f / 255f, 1f);       // 變暗: RGB(3,159,196)
+            colors.selectedColor = new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f);   // 選中後回到正常色
             colors.disabledColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
             colors.colorMultiplier = 1f;
             colors.fadeDuration = 0.1f;
@@ -1110,11 +1115,13 @@ namespace EquipmentSkinSystem
 
             var resetButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Reset", "重置配置"), OnResetClicked);
             var resetText = resetButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (resetText != null) _localizedTexts["UI_Reset"] = resetText;
-            
+            if (resetText != null)
+                _localizedTexts["UI_Reset"] = resetText;
+
             var closeButton = CreateButton(buttonContainer.transform, Localization.Get("UI_Close", "關閉"), OnCloseClicked);
             var closeText = closeButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (closeText != null) _localizedTexts["UI_Close"] = closeText;
+            if (closeText != null)
+                _localizedTexts["UI_Close"] = closeText;
         }
 
         private void CreateSettingsPanel(Transform parent)
@@ -1156,7 +1163,7 @@ namespace EquipmentSkinSystem
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.color = new Color(1f, 0.95f, 0.85f, 1f); // 暖白色
             titleText.fontStyle = FontStyles.Bold;
-            
+
             // 添加文字陰影
             Shadow textShadow = titleObj.AddComponent<Shadow>();
             textShadow.effectColor = new Color(0, 0, 0, 0.8f);
@@ -1176,7 +1183,8 @@ namespace EquipmentSkinSystem
             // 日誌設定頁籤
             _logTabButton = CreateTabButton(tabContainer.transform, Localization.Get("Settings_Tab_Log", "日誌設定"), "Log");
             var logTabText = _logTabButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (logTabText != null) _localizedTexts["Settings_Tab_Log"] = logTabText;
+            if (logTabText != null)
+                _localizedTexts["Settings_Tab_Log"] = logTabText;
             RectTransform logTabRect = _logTabButton.GetComponent<RectTransform>();
             logTabRect.anchorMin = new Vector2(0.5f, 0.5f);
             logTabRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1186,7 +1194,8 @@ namespace EquipmentSkinSystem
             // 語言設定頁籤
             _languageTabButton = CreateTabButton(tabContainer.transform, Localization.Get("Settings_Tab_Language", "語言"), "Language");
             var languageTabText = _languageTabButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (languageTabText != null) _localizedTexts["Settings_Tab_Language"] = languageTabText;
+            if (languageTabText != null)
+                _localizedTexts["Settings_Tab_Language"] = languageTabText;
             RectTransform languageTabRect = _languageTabButton.GetComponent<RectTransform>();
             languageTabRect.anchorMin = new Vector2(0.5f, 0.5f);
             languageTabRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1233,7 +1242,8 @@ namespace EquipmentSkinSystem
 
             var settingsCloseButton = CreateButton(bottomButtonContainer.transform, Localization.Get("UI_Close", "關閉"), () => ToggleSettingsPanel());
             var settingsCloseText = settingsCloseButton.transform.Find("Text")?.GetComponent<TextMeshProUGUI>();
-            if (settingsCloseText != null) _localizedTexts["UI_Close_Settings"] = settingsCloseText;
+            if (settingsCloseText != null)
+                _localizedTexts["UI_Close_Settings"] = settingsCloseText;
 
             _settingsPanel = panelObj;
             _settingsPanel.SetActive(false);
@@ -1322,7 +1332,7 @@ namespace EquipmentSkinSystem
                 dropdownImage.color = new Color(0.2f, 0.25f, 0.3f, 1f);
 
                 TMP_Dropdown dropdown = dropdownObj.AddComponent<TMP_Dropdown>();
-                
+
                 // 設置選項（裝備相關的標籤）- 使用本地化文字
                 // 順序：頭盔、護甲、面罩、耳機、背包
                 dropdown.options.Clear();
@@ -1332,7 +1342,7 @@ namespace EquipmentSkinSystem
                 dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Headset", "Headset")));    // 耳機
                 dropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Backpack", "Backpack")));  // 背包
                 dropdown.value = 1; // 預設選擇護甲（索引 1）
-                
+
                 // 保存下拉選單的原始標籤名稱（用於查詢），對應到顯示文字
                 // 注意：dropdown.options 中存的是顯示文字，但我們需要原始標籤名稱來查詢物品
 
@@ -1471,7 +1481,7 @@ namespace EquipmentSkinSystem
 
                 Toggle itemToggle = itemObj.AddComponent<Toggle>();
                 itemToggle.targetGraphic = itemImage;
-                
+
                 // 設置 Toggle 的顏色塊，確保文字清晰可見
                 ColorBlock toggleColors = itemToggle.colors;
                 toggleColors.normalColor = new Color(0.2f, 0.25f, 0.3f, 1f);
@@ -1507,7 +1517,8 @@ namespace EquipmentSkinSystem
                 // 注意：需要將顯示文字映射回原始標籤名稱
                 // 順序對應下拉選單：頭盔、護甲、面罩、耳機、背包
                 string[] tagNames = { "Helmat", "Armor", "FaceMask", "Headset", "Backpack" };
-                dropdown.onValueChanged.AddListener((index) => {
+                dropdown.onValueChanged.AddListener((index) =>
+                {
                     _currentSelectedTag = tagNames[index]; // 使用原始標籤名稱，不是顯示文字
                     // 更新顯示文字（本地化）
                     if (labelText != null)
@@ -1577,7 +1588,7 @@ namespace EquipmentSkinSystem
 
                 // 初始載入裝備列表（即使面板未顯示也先載入）
                 RefreshEquipmentList();
-                
+
                 Logger.Debug($"Equipment selector panel created at position {panelRect.anchoredPosition}, size {panelRect.sizeDelta}");
 
                 Logger.Debug("Equipment selector panel created");
@@ -1612,7 +1623,7 @@ namespace EquipmentSkinSystem
 
                 // 取得符合標籤的裝備
                 var itemInfos = ItemInfoProvider.Instance.GetItemsByTag(_currentSelectedTag);
-                
+
                 Logger.Debug($"Found {itemInfos.Count} items with tag '{_currentSelectedTag}'");
 
                 // 創建裝備項目
@@ -1682,10 +1693,11 @@ namespace EquipmentSkinSystem
                 buttonColors.pressedColor = new Color(0.1f, 0.15f, 0.2f, 1f);
                 itemButton.colors = buttonColors;
 
-                itemButton.onClick.AddListener(() => {
+                itemButton.onClick.AddListener(() =>
+                {
                     OnEquipmentItemClicked(-1);
                 });
-                
+
                 // 添加雙擊檢測組件
                 EquipmentItemDoubleClickHandler doubleClickHandler = itemObj.AddComponent<EquipmentItemDoubleClickHandler>();
                 doubleClickHandler.Initialize(-1, this);
@@ -1763,10 +1775,11 @@ namespace EquipmentSkinSystem
                 itemButton.colors = buttonColors;
 
                 int typeID = itemInfo.TypeID; // 捕獲變數
-                itemButton.onClick.AddListener(() => {
+                itemButton.onClick.AddListener(() =>
+                {
                     OnEquipmentItemClicked(typeID);
                 });
-                
+
                 // 添加雙擊檢測組件
                 EquipmentItemDoubleClickHandler doubleClickHandler = itemObj.AddComponent<EquipmentItemDoubleClickHandler>();
                 doubleClickHandler.Initialize(typeID, this);
@@ -1801,7 +1814,7 @@ namespace EquipmentSkinSystem
             try
             {
                 Logger.Debug($"Equipment item double-clicked: TypeID {typeID}, Current Tag: {_currentSelectedTag}");
-                
+
                 // 根據當前選中的 Tag 判斷應該填入哪個槽位
                 EquipmentSlotType? targetSlotType = GetSlotTypeFromTag(_currentSelectedTag);
                 if (!targetSlotType.HasValue)
@@ -1809,16 +1822,16 @@ namespace EquipmentSkinSystem
                     Logger.Warning($"Unknown tag: {_currentSelectedTag}, cannot determine slot type");
                     return;
                 }
-                
+
                 // 檢查槽位是否存在
                 if (!_slotUIElements.ContainsKey(targetSlotType.Value))
                 {
                     Logger.Warning($"Slot UI element not found for: {targetSlotType.Value}");
                     return;
                 }
-                
+
                 var slotElements = _slotUIElements[targetSlotType.Value];
-                
+
                 // 填入輸入框（-1 表示隱藏）
                 if (typeID == -1)
                 {
@@ -1828,10 +1841,10 @@ namespace EquipmentSkinSystem
                 {
                     slotElements.SkinItemInput.text = typeID.ToString();
                 }
-                
+
                 // 觸發變更事件（這會自動更新配置並觸發預覽）
                 OnSkinItemChanged(targetSlotType.Value, slotElements.SkinItemInput.text);
-                
+
                 // 確保啟用外觀（如果還沒啟用的話）
                 var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
                 if (profile != null && profile.SlotConfigs != null && profile.SlotConfigs.ContainsKey(targetSlotType.Value))
@@ -1842,11 +1855,11 @@ namespace EquipmentSkinSystem
                         slotElements.UseSkinToggle.isOn = true;
                     }
                 }
-                
+
                 // 觸發預覽更新
                 RefreshAllEquipment();
                 UpdatePreview();
-                
+
                 Logger.Info($"Applied equipment TypeID {typeID} to slot {targetSlotType.Value}");
             }
             catch (Exception e)
@@ -1895,15 +1908,15 @@ namespace EquipmentSkinSystem
             image.raycastTarget = true;
 
             Button button = buttonObj.AddComponent<Button>();
-            
+
             // 根據當前選中狀態設置顏色
             bool isSelected = _currentTab == tabName;
             ColorBlock colors = button.colors;
-            colors.normalColor = isSelected 
-                ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)  // 選中：亮藍色
+            colors.normalColor = isSelected
+                ? new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f)  // 選中：亮藍色
                 : new Color(0.3f, 0.3f, 0.3f, 1f);                 // 未選中：灰色
-            colors.highlightedColor = new Color(157f/255f, 220f/255f, 235f/255f, 1f);
-            colors.pressedColor = new Color(3f/255f, 159f/255f, 196f/255f, 1f);
+            colors.highlightedColor = new Color(157f / 255f, 220f / 255f, 235f / 255f, 1f);
+            colors.pressedColor = new Color(3f / 255f, 159f / 255f, 196f / 255f, 1f);
             colors.selectedColor = colors.normalColor;
             colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
             button.colors = colors;
@@ -1986,24 +1999,24 @@ namespace EquipmentSkinSystem
             // 顯示當前語言（唯讀）
             string currentLang = Localization.GetCurrentLanguage();
             string currentLangName = Localization.GetLanguageDisplayName(currentLang);
-            
+
             // 當前語言顯示框
             GameObject currentLangObj = new GameObject("CurrentLanguageDisplay");
             currentLangObj.transform.SetParent(contentObj.transform, false);
-            
+
             RectTransform currentLangRect = currentLangObj.AddComponent<RectTransform>();
             currentLangRect.sizeDelta = new Vector2(0, 50);
-            
+
             // 背景框
             UnityEngine.UI.Image bgImage = currentLangObj.AddComponent<UnityEngine.UI.Image>();
             bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
-            
+
             // 語言名稱文字
             TextMeshProUGUI currentLangText = CreateText(currentLangObj.transform, currentLangName, 0);
             currentLangText.fontSize = 20;
             currentLangText.fontStyle = FontStyles.Bold;
             currentLangText.alignment = TextAlignmentOptions.Center;
-            currentLangText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+            currentLangText.color = new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f);
             RectTransform currentLangTextRect = currentLangText.gameObject.GetComponent<RectTransform>();
             currentLangTextRect.anchorMin = Vector2.zero;
             currentLangTextRect.anchorMax = Vector2.one;
@@ -2049,7 +2062,7 @@ namespace EquipmentSkinSystem
                     }
                 }
             }
-            
+
             // 更新所有 placeholder 文字
             foreach (var kvp in _localizedPlaceholders)
             {
@@ -2081,7 +2094,7 @@ namespace EquipmentSkinSystem
             {
                 // 保存當前選中的索引
                 int currentIndex = _tagFilterDropdown.value;
-                
+
                 // 更新選項文字（順序：頭盔、護甲、面罩、耳機、背包）
                 _tagFilterDropdown.options.Clear();
                 _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Helmat", "Helmat")));      // 頭盔
@@ -2089,10 +2102,10 @@ namespace EquipmentSkinSystem
                 _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_FaceMask", "FaceMask")));  // 面罩
                 _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Headset", "Headset")));    // 耳機
                 _tagFilterDropdown.options.Add(new TMP_Dropdown.OptionData(Localization.Get("Tag_Backpack", "Backpack")));  // 背包
-                
+
                 // 恢復選中狀態
                 _tagFilterDropdown.value = currentIndex;
-                
+
                 // 更新當前顯示的文字
                 if (currentIndex >= 0 && currentIndex < _tagFilterDropdown.options.Count)
                 {
@@ -2111,28 +2124,28 @@ namespace EquipmentSkinSystem
             if (_languageTabContent != null)
             {
                 string currentLang = Localization.GetCurrentLanguage();
-                
+
                 foreach (Transform child in _languageTabContent.transform)
                 {
                     if (child.name.StartsWith("LanguageOption_"))
                     {
                         string languageCode = child.name.Replace("LanguageOption_", "");
                         bool isSelected = currentLang == languageCode;
-                        
+
                         // 更新選中標記
                         var existingCheck = child.Find("Checkmark");
                         if (existingCheck != null)
                         {
                             UnityEngine.Object.Destroy(existingCheck.gameObject);
                         }
-                        
+
                         if (isSelected)
                         {
                             TextMeshProUGUI checkText = CreateText(child, "✓", 0);
                             checkText.gameObject.name = "Checkmark";
                             RectTransform checkRect = checkText.gameObject.GetComponent<RectTransform>();
                             checkRect.sizeDelta = new Vector2(30, 0);
-                            checkText.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+                            checkText.color = new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f);
                             checkText.fontSize = 24;
                             checkText.fontStyle = FontStyles.Bold;
                             checkText.alignment = TextAlignmentOptions.Center;
@@ -2150,22 +2163,22 @@ namespace EquipmentSkinSystem
         private void SwitchTab(string tabName)
         {
             _currentTab = tabName;
-            
+
             // 更新頁籤按鈕顏色
             if (_logTabButton != null && _languageTabButton != null)
             {
                 bool logSelected = tabName == "Log";
                 bool langSelected = tabName == "Language";
-                
+
                 ColorBlock logColors = _logTabButton.colors;
-                logColors.normalColor = logSelected 
-                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)
+                logColors.normalColor = logSelected
+                    ? new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f)
                     : new Color(0.3f, 0.3f, 0.3f, 1f);
                 _logTabButton.colors = logColors;
 
                 ColorBlock langColors = _languageTabButton.colors;
-                langColors.normalColor = langSelected 
-                    ? new Color(112f/255f, 204f/255f, 224f/255f, 1f)
+                langColors.normalColor = langSelected
+                    ? new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f)
                     : new Color(0.3f, 0.3f, 0.3f, 1f);
                 _languageTabButton.colors = langColors;
             }
@@ -2212,7 +2225,7 @@ namespace EquipmentSkinSystem
             toggleRect.anchoredPosition = new Vector2(100, 0); // 按鈕往右平移 20 像素
 
             Toggle toggle = toggleObj.AddComponent<Toggle>();
-            
+
             // 根據設定鍵設置初始值
             var settings = EquipmentSkinDataManager.Instance.AppSettings;
             bool initialValue = settingKey switch
@@ -2249,7 +2262,7 @@ namespace EquipmentSkinSystem
             checkmarkRect.sizeDelta = Vector2.zero;
 
             Image checkmarkImage = checkmarkObj.AddComponent<Image>();
-            checkmarkImage.color = new Color(112f/255f, 204f/255f, 224f/255f, 1f);
+            checkmarkImage.color = new Color(112f / 255f, 204f / 255f, 224f / 255f, 1f);
 
             toggle.graphic = checkmarkImage;
             toggle.targetGraphic = bgImage;
@@ -2291,7 +2304,7 @@ namespace EquipmentSkinSystem
             if (_settingsPanel != null && _backgroundPanel != null)
             {
                 _isSettingsPanelVisible = !_isSettingsPanelVisible;
-                
+
                 if (_isSettingsPanelVisible)
                 {
                     // 顯示設定面板，隱藏主面板和裝備選擇面板
@@ -2359,7 +2372,7 @@ namespace EquipmentSkinSystem
                 // 根據當前選中的角色類型獲取對應的角色
                 CharacterMainControl? targetCharacter = null;
                 var currentType = EquipmentSkinDataManager.Instance.CurrentCharacterType;
-                
+
                 if (currentType == CharacterType.Player)
                 {
                     targetCharacter = LevelManager.Instance?.MainCharacter;
@@ -2369,10 +2382,12 @@ namespace EquipmentSkinSystem
                     targetCharacter = LevelManager.Instance?.PetCharacter;
                 }
 
-                if (targetCharacter == null) return;
+                if (targetCharacter == null)
+                    return;
 
                 var equipmentController = targetCharacter.GetComponent<CharacterEquipmentController>();
-                if (equipmentController == null) return;
+                if (equipmentController == null)
+                    return;
 
                 // 遊戲使用獨立欄位而非字典，逐個取得
                 foreach (var kvp in _slotUIElements)
@@ -2412,7 +2427,8 @@ namespace EquipmentSkinSystem
                 _ => null
             };
 
-            if (string.IsNullOrEmpty(fieldName)) return null;
+            if (string.IsNullOrEmpty(fieldName))
+                return null;
 
             return Traverse.Create(controller).Field(fieldName).GetValue<Slot>();
         }
@@ -2447,10 +2463,10 @@ namespace EquipmentSkinSystem
             if (_uiPanel != null)
             {
                 _uiPanel.SetActive(true);
-                
+
                 // 每次打開 UI 時檢查語言是否變更
                 Localization.CheckAndUpdateLanguage();
-                
+
                 // 每次從關閉狀態打開 UI 時，都顯示第一層（主面板）
                 // 這確保了無論之前在哪一層，關閉後重新打開都會回到第一層
                 if (_backgroundPanel != null && _settingsPanel != null)
@@ -2460,25 +2476,25 @@ namespace EquipmentSkinSystem
                     _isSettingsPanelVisible = false;
                     Logger.Debug("ShowUI - Reset to main panel");
                 }
-                
+
                 // 顯示裝備選擇面板
                 if (_equipmentSelectorPanel != null)
                 {
                     _equipmentSelectorPanel.SetActive(true);
                 }
-                
+
                 // 確保載入最新配置
                 Logger.Debug("ShowUI - Loading config...");
                 DataPersistence.LoadConfig();
-                
+
                 // 載入配置後，立即獲取當前角色類型（這應該已經從配置文件恢復）
                 var currentTypeAfterLoad = EquipmentSkinDataManager.Instance.CurrentCharacterType;
                 Logger.Info($"ShowUI - CurrentCharacterType after LoadConfig: {currentTypeAfterLoad} (Player=0, Pet=1)");
-                
+
                 // 重要：同步按鈕顏色狀態，確保按鈕顯示的狀態和 CurrentCharacterType 一致
                 // 這必須在 RefreshUI() 之前調用，因為按鈕顏色應該反映當前選中的角色
                 UpdateCharacterButtonColors();
-                
+
                 // 顯示當前配置狀態
                 var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
                 Logger.Debug($"ShowUI - Current profile: {profile?.ProfileName}");
@@ -2490,9 +2506,9 @@ namespace EquipmentSkinSystem
                         Logger.Debug($"ShowUI - {kvp.Key}: SkinID={kvp.Value.SkinItemTypeID}, UseSkin={kvp.Value.UseSkin}");
                     }
                 }
-                
+
                 RefreshUI();
-                
+
                 // 啟用預覽（根據當前選中的角色類型來設置）
                 // 重要：必須在 LoadConfig() 和 UpdateCharacterButtonColors() 之後調用
                 if (_characterPreview != null)
@@ -2502,10 +2518,10 @@ namespace EquipmentSkinSystem
                     Logger.Debug($"ShowUI - Setting preview for current character type: {currentTypeAfterLoad}");
                     UpdatePreview();
                 }
-                
+
                 // 使用遊戲的輸入管理系統（和物品欄一樣的方式）
                 InputManager.DisableInput(_uiPanel);
-                
+
                 Logger.Debug("UI opened - Input disabled via InputManager");
             }
         }
@@ -2516,25 +2532,25 @@ namespace EquipmentSkinSystem
             if (_uiPanel != null)
             {
                 _uiPanel.SetActive(false);
-                
+
                 // 隱藏裝備選擇面板
                 if (_equipmentSelectorPanel != null)
                 {
                     _equipmentSelectorPanel.SetActive(false);
                 }
-                
+
                 // 停用預覽
                 if (_characterPreview != null)
                 {
                     _characterPreview.DisablePreview();
                 }
-                
+
                 // 關閉面板時觸發重新渲染，確保所有變更都應用到遊戲中
                 RefreshAllEquipment();
-                
+
                 // 恢復輸入
                 InputManager.ActiveInput(_uiPanel);
-                
+
                 Logger.Debug("UI closed - Input restored, equipment refreshed");
             }
         }
@@ -2554,13 +2570,13 @@ namespace EquipmentSkinSystem
                 {
                     var slotType = kvp.Key;
                     var elements = kvp.Value;
-                    
+
                     if (!profile.SlotConfigs.ContainsKey(slotType))
                     {
                         Logger.Warning($"SlotType {slotType} not found in profile!");
                         continue;
                     }
-                    
+
                     var config = profile.SlotConfigs[slotType];
 
                     // 顯示 ID：0 = 空欄，-1 或正數 = 顯示數字
@@ -2573,7 +2589,7 @@ namespace EquipmentSkinSystem
                         elements.SkinItemInput.text = config.SkinItemTypeID.ToString();
                     }
                     elements.UseSkinToggle.isOn = config.UseSkin;
-                    
+
                     Logger.Debug($"RefreshUI - Slot {slotType}: SkinID={config.SkinItemTypeID}, UseSkin={config.UseSkin}");
                 }
             }
@@ -2594,11 +2610,11 @@ namespace EquipmentSkinSystem
                     profile.SlotConfigs[slotType].UseSkin = value;
                     Logger.Info($"Slot {slotType} UseSkin changed to: {value}");
                     Logger.Debug($"Current config: SkinID={profile.SlotConfigs[slotType].SkinItemTypeID}");
-                    
+
                     // 立即應用變更（觸發全身重新渲染）
                     RefreshAllEquipment();
                     UpdatePreview();
-                    
+
                     // 自動保存配置
                     DataPersistence.SaveConfig();
                 }
@@ -2630,14 +2646,14 @@ namespace EquipmentSkinSystem
                     // 空欄 = 不套用任何外觀（保持原樣）
                     profile.SlotConfigs[slotType].SkinItemTypeID = 0;
                     Logger.Debug($"Slot {slotType} skin cleared (will use original visual)");
-                    
+
                     // 如果已啟用，立即應用變更（全身重新渲染）
                     if (profile.SlotConfigs[slotType].UseSkin)
                     {
                         RefreshAllEquipment();
                         UpdatePreview();
                     }
-                    
+
                     // 自動保存配置
                     DataPersistence.SaveConfig();
                 }
@@ -2645,7 +2661,7 @@ namespace EquipmentSkinSystem
                 {
                     profile.SlotConfigs[slotType].SkinItemTypeID = itemID;
                     Logger.Debug($"Slot {slotType} skin item set to: {itemID} (including -1 for hide)");
-                    
+
                     // 如果已啟用，立即應用變更（全身重新渲染）
                     if (profile.SlotConfigs[slotType].UseSkin)
                     {
@@ -2653,7 +2669,7 @@ namespace EquipmentSkinSystem
                         // 更新預覽
                         UpdatePreview();
                     }
-                    
+
                     // 自動保存配置
                     DataPersistence.SaveConfig();
                 }
@@ -2786,23 +2802,23 @@ namespace EquipmentSkinSystem
         private void OnClearSlotClicked(EquipmentSlotType slotType)
         {
             Logger.Debug($"Clear slot: {slotType}");
-            
+
             var profile = EquipmentSkinDataManager.Instance.CurrentProfile;
             if (profile != null && profile.SlotConfigs != null && profile.SlotConfigs.ContainsKey(slotType))
             {
                 // 清空設定
                 profile.SlotConfigs[slotType].SkinItemTypeID = 0;
                 profile.SlotConfigs[slotType].UseSkin = false;
-                
+
                 // 刷新 UI
                 RefreshUI();
-                
+
                 // 立即應用變更（全身重新渲染）
                 RefreshAllEquipment();
-                
+
                 // 自動保存配置
                 DataPersistence.SaveConfig();
-                
+
                 Logger.Info($"Slot {slotType} cleared!");
             }
         }
@@ -2842,18 +2858,18 @@ namespace EquipmentSkinSystem
         {
             // 取消訂閱語言變更事件
             Localization.OnLanguageChanged -= OnLocalizationLanguageChanged;
-            
+
             // 確保恢復輸入
             if (_isUIVisible && _uiPanel != null)
             {
                 InputManager.ActiveInput(_uiPanel);
             }
-            
+
             if (_uiPanel != null)
             {
                 Destroy(_uiPanel);
             }
-            
+
             if (_roundedSprite != null)
             {
                 Destroy(_roundedSprite.texture);
@@ -2880,7 +2896,7 @@ namespace EquipmentSkinSystem
             texture.filterMode = FilterMode.Trilinear; // 三線性過濾，最平滑
             texture.wrapMode = TextureWrapMode.Clamp;
             Color[] pixels = new Color[width * height];
-            
+
             // 使用超採樣抗鋸齒（每個像素採樣 4 次）
             for (int y = 0; y < height; y++)
             {
@@ -2888,26 +2904,26 @@ namespace EquipmentSkinSystem
                 {
                     float totalAlpha = 0f;
                     int samples = 4; // 2x2 超採樣
-                    
+
                     for (int sy = 0; sy < 2; sy++)
                     {
                         for (int sx = 0; sx < 2; sx++)
                         {
                             float px = x + (sx + 0.5f) / 2f;
                             float py = y + (sy + 0.5f) / 2f;
-                            
+
                             float alpha = CalculateAlpha(px, py, width, height, cornerRadius);
                             totalAlpha += alpha;
                         }
                     }
-                    
+
                     pixels[y * width + x] = new Color(1f, 1f, 1f, totalAlpha / samples);
                 }
             }
-            
+
             texture.SetPixels(pixels);
             texture.Apply(true); // 生成 mipmap
-            
+
             Sprite sprite = Sprite.Create(
                 texture,
                 new Rect(0, 0, width, height),
@@ -2917,10 +2933,10 @@ namespace EquipmentSkinSystem
                 SpriteMeshType.FullRect,
                 new Vector4(cornerRadius, cornerRadius, cornerRadius, cornerRadius)
             );
-            
+
             return sprite;
         }
-        
+
         /// <summary>
         /// 計算指定位置的 alpha 值（用於圓角）
         /// </summary>
@@ -2931,15 +2947,15 @@ namespace EquipmentSkinSystem
             bool inTopRight = x > width - cornerRadius && y > height - cornerRadius;
             bool inBottomLeft = x < cornerRadius && y < cornerRadius;
             bool inBottomRight = x > width - cornerRadius && y < cornerRadius;
-            
+
             if (!inTopLeft && !inTopRight && !inBottomLeft && !inBottomRight)
             {
                 return 1f; // 不在角落，完全不透明
             }
-            
+
             // 計算到角落中心的距離
             float dx = 0, dy = 0;
-            
+
             if (inTopLeft)
             {
                 dx = cornerRadius - x;
@@ -2960,9 +2976,9 @@ namespace EquipmentSkinSystem
                 dx = x - (width - cornerRadius);
                 dy = cornerRadius - y;
             }
-            
+
             float distance = Mathf.Sqrt(dx * dx + dy * dy);
-            
+
             // 平滑過渡（使用 smoothstep）
             if (distance > cornerRadius)
                 return 0f;

@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
 using System.IO;
-using UnityEngine;
-using UnityEngine.SceneManagement;
 using HarmonyLib;
 using ItemStatsSystem.Items;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace EquipmentSkinSystem
 {
@@ -120,15 +120,15 @@ namespace EquipmentSkinSystem
         {
             // 先等待一小段時間，讓角色初始化
             yield return new WaitForSeconds(0.5f);
-            
+
             // 最多等待 5 秒，每 0.2 秒檢查一次裝備是否已加載
             int maxAttempts = 25;
             int attempts = 0;
-            
+
             while (attempts < maxAttempts)
             {
                 bool equipmentReady = CheckEquipmentReady();
-                
+
                 if (equipmentReady)
                 {
                     try
@@ -143,11 +143,11 @@ namespace EquipmentSkinSystem
                         yield break;
                     }
                 }
-                
+
                 attempts++;
                 yield return new WaitForSeconds(0.2f);
             }
-            
+
             // 如果超時，仍然嘗試刷新一次（可能裝備已經加載但檢查失敗）
             try
             {
@@ -168,10 +168,12 @@ namespace EquipmentSkinSystem
             try
             {
                 var mainCharacter = LevelManager.Instance?.MainCharacter;
-                if (mainCharacter == null) return false;
+                if (mainCharacter == null)
+                    return false;
 
                 var controller = mainCharacter.GetComponent<CharacterEquipmentController>();
-                if (controller == null) return false;
+                if (controller == null)
+                    return false;
 
                 // 檢查至少有一個槽位有裝備
                 var armorSlot = HarmonyLib.Traverse.Create(controller).Field("armorSlot").GetValue<Slot>();
@@ -282,7 +284,7 @@ namespace EquipmentSkinSystem
                     Logger.Debug("Creating UI for the first time...");
                     InitializeUI();
                 }
-                
+
                 if (_skinManagerUI != null)
                 {
                     _skinManagerUI.ToggleUI();

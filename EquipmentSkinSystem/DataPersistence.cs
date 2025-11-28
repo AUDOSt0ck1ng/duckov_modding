@@ -16,7 +16,7 @@ namespace EquipmentSkinSystem
             {
                 // Path.Combine 會自動處理跨平台路徑分隔符
                 string path = Path.Combine(Application.persistentDataPath, "EquipmentSkinSystem");
-                
+
                 if (!Directory.Exists(path))
                 {
                     Directory.CreateDirectory(path);
@@ -38,14 +38,14 @@ namespace EquipmentSkinSystem
                 Logger.Debug("SaveConfig called");
                 Logger.Debug($"Save directory: {SaveDirectory}");
                 Logger.Debug($"Save file path: {SaveFilePath}");
-                
+
                 string json = EquipmentSkinDataManager.Instance.SaveToJson();
                 Logger.Debug($"JSON length: {json?.Length ?? 0}");
                 Logger.Debug($"JSON content: {json}");
-                
+
                 File.WriteAllText(SaveFilePath, json);
                 Logger.Info($"Configuration saved to: {SaveFilePath}");
-                
+
                 // 驗證文件是否真的存在
                 if (File.Exists(SaveFilePath))
                 {
@@ -73,13 +73,13 @@ namespace EquipmentSkinSystem
             {
                 Logger.Debug("LoadConfig called");
                 Logger.Debug($"Looking for file: {SaveFilePath}");
-                
+
                 if (File.Exists(SaveFilePath))
                 {
                     string json = File.ReadAllText(SaveFilePath);
                     Logger.Debug($"Loaded JSON length: {json.Length}");
                     Logger.Debug($"Loaded JSON content: {json}");
-                    
+
                     EquipmentSkinDataManager.Instance.LoadFromJson(json);
                     Logger.Info($"Configuration loaded from: {SaveFilePath}");
                 }
@@ -87,7 +87,7 @@ namespace EquipmentSkinSystem
                 {
                     Logger.Info($"No saved configuration found at: {SaveFilePath}");
                     Logger.Debug("Using default configuration and saving it for the first time.");
-                    
+
                     // 第一次載入時，使用預設配置並保存
                     EquipmentSkinDataManager.Instance.LoadFromJson(""); // 這會創建預設配置
                     SaveConfig(); // 保存預設配置

@@ -9,7 +9,13 @@
 │   ├── copy-dlls.sh        # DLL 複製腳本
 │   └── find-game.sh        # 遊戲路徑查找腳本
 │
-├── dev-tools/              # 開發工具（新增）
+├── .editorconfig           # 程式碼風格配置（C#、YAML 等）
+├── .pre-commit-config.yaml # Pre-commit hooks 配置
+├── setup-pre-commit.sh     # Pre-commit 快速安裝腳本
+├── PRE_COMMIT_SETUP.md     # Pre-commit 使用文檔
+├── TEST_PRE_COMMIT.md      # Pre-commit 測試指南
+│
+├── dev-tools/              # 開發工具
 │   ├── DECOMPILE_COMMANDS.sh  # 反編譯腳本
 │   ├── requirements.txt       # 開發依賴清單
 │   └── README.md             # 工具使用說明
@@ -36,6 +42,25 @@
 ```
 
 ## 🔧 開發工具使用
+
+### 0. 設置 Pre-commit（程式碼品質檢查）
+
+**首次設置：**
+
+```bash
+cd /workspace
+./setup-pre-commit.sh
+```
+
+**用途：**
+- 自動檢查程式碼格式（C#、YAML、Markdown 等）
+- 確保編譯成功
+- 禁止使用 `Console.WriteLine`（應使用 `Logger`）
+- 檢查 YAML 語法、行尾空白、大型文件等
+
+**詳細文檔：**
+- [PRE_COMMIT_SETUP.md](PRE_COMMIT_SETUP.md) - 完整使用指南
+- [TEST_PRE_COMMIT.md](TEST_PRE_COMMIT.md) - 測試步驟
 
 ### 1. 反編譯遊戲 DLL
 
@@ -110,4 +135,3 @@ git config --global user.name "Your Name"
 - [開發工具說明](dev-tools/README.md)
 - [遊戲 API 文檔](Documents/NotableAPIs_CN.md)
 - [Dev Container 設定](.devcontainer/README.md)
-
