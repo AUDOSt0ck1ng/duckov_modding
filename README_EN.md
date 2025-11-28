@@ -96,4 +96,3 @@ To aid the long-term development of the Duckov community, we ask everyone to con
 4. Mods must not be used to direct players to advertisements, fundraising, payment requests, or other commercial or unofficial external links.
 5. Mods containing AI-generated content must be clearly labeled.
 For mods published on Steam Workshop, any violations of the above rules may result in removal without prior notice and may lead to suspension of the creator’s permissions.
-

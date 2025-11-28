@@ -20,7 +20,7 @@ for path in "${PATHS[@]}"; do
         echo "✅ 找到遊戲！"
         echo "   路徑: $path"
         echo ""
-        
+
         # 檢查關鍵檔案
         if [ -f "$path/Duckov_Data/Managed/TeamSoda.dll" ] || [ -f "$path/Duckov.app/Contents/Resources/Data/Managed/TeamSoda.dll" ]; then
             echo "✅ 確認遊戲檔案完整"
@@ -33,7 +33,7 @@ for path in "${PATHS[@]}"; do
             echo "⚠️  找到目錄但檔案可能不完整"
             echo ""
         fi
-        
+
         FOUND=1
     fi
 done
@@ -50,4 +50,3 @@ if [ $FOUND -eq 0 ]; then
     echo "   - 將 \\ 改為 /"
     echo "   - 例如: /mnt/c/Program Files (x86)/Steam/steamapps/common/Escape from Duckov"
 fi
-

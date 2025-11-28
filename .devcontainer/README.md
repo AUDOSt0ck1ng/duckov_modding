@@ -67,7 +67,7 @@ dotnet build -c Release
 <PropertyGroup>
     <!-- 優先使用環境變數，如果沒有則使用預設路徑 -->
     <DuckovPath Condition="'$(DuckovPath)' == ''">E:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov</DuckovPath>
-    
+
     <!-- 容器環境會自動使用 /duckov -->
     <DuckovPath Condition="Exists('/duckov')">/duckov</DuckovPath>
 </PropertyGroup>
@@ -138,5 +138,3 @@ DisplayItemValue/bin/Release/netstandard2.1/DisplayItemValue.dll
 - [Dev Containers 文檔](https://code.visualstudio.com/docs/devcontainers/containers)
 - [.NET in Docker](https://learn.microsoft.com/dotnet/core/docker/introduction)
 - [Duckov Modding APIs](../Documents/NotableAPIs.md)
-
-

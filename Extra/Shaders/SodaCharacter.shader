@@ -1,5 +1,5 @@
 ﻿// Made with Amplify Shader Editor v1.9.7.1
-// Available at the Unity Asset Store - http://u3d.as/y3X 
+// Available at the Unity Asset Store - http://u3d.as/y3X
 Shader "SodaCraft/SodaCharacter"
 {
 	Properties
@@ -49,20 +49,20 @@ Shader "SodaCraft/SodaCharacter"
 	{
 		LOD 0
 
-		
-		
+
+
 		Tags { "RenderPipeline"="UniversalPipeline" "RenderType"="Opaque" "Queue"="Geometry" }
 		Cull Back
 		ZWrite On
 		ZTest LEqual
 		Offset 0 , 0
 		AlphaToMask Off
-		
+
 		HLSLINCLUDE
 		#pragma target 3.0
 
 		#pragma prefer_hlslcc gles
-		
+
 
 		#ifndef ASE_TESS_FUNCS
 		#define ASE_TESS_FUNCS
@@ -70,7 +70,7 @@ Shader "SodaCraft/SodaCharacter"
 		{
 			return tessValue;
 		}
-		
+
 		float CalcDistanceTessFactor (float4 vertex, float minDist, float maxDist, float tess, float4x4 o2w, float3 cameraPos )
 		{
 			float3 wpos = mul(o2w,vertex).xyz;
@@ -168,16 +168,16 @@ Shader "SodaCraft/SodaCharacter"
 
 		ENDHLSL
 
-		
+
 		Pass
 		{
-			
+
 			Name "Forward"
 			Tags { "LightMode"="UniversalForward" }
-			
+
 			Blend One Zero, One Zero
 			ColorMask RGBA
-			
+
 
 			HLSLPROGRAM
 
@@ -198,7 +198,7 @@ Shader "SodaCraft/SodaCharacter"
 			#pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
 			#pragma multi_compile _ _SHADOWS_SOFT
 			//#pragma multi_compile _ _MIXED_LIGHTING_SUBTRACTIVE
-			
+
 			// #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
 			// #pragma multi_compile _ SHADOWS_SHADOWMASK
 
@@ -210,7 +210,7 @@ Shader "SodaCraft/SodaCharacter"
 			#pragma multi_compile _ _REFLECTION_PROBE_BOX_PROJECTION
 			#pragma multi_compile _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
 			#pragma multi_compile _ _LIGHT_LAYERS
-			
+
 			//#pragma multi_compile _ _LIGHT_COOKIES
 			#pragma multi_compile _ _CLUSTERED_RENDERING
 
@@ -248,7 +248,7 @@ Shader "SodaCraft/SodaCharacter"
 				float4 texcoord : TEXCOORD0;
 				float4 texcoord1 : TEXCOORD1;
 				float4 texcoord2 : TEXCOORD2;
-				
+
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -321,11 +321,11 @@ Shader "SodaCraft/SodaCharacter"
 			UNITY_INSTANCING_BUFFER_START(SodaCraftSodaCharacter)
 				//UNITY_DEFINE_INSTANCED_PROP(float4, _MainTex_ST)
 				//UNITY_DEFINE_INSTANCED_PROP(float4, _AmbinentOcclusion_ST)
-				
+
 			UNITY_INSTANCING_BUFFER_END(SodaCraftSodaCharacter)
 
 
-			
+
 			VertexOutput VertexFunction( VertexInput v  )
 			{
 				VertexOutput o = (VertexOutput)0;
@@ -334,7 +334,7 @@ Shader "SodaCraft/SodaCharacter"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
 				o.ase_texcoord8.xy = v.texcoord.xy;
-				
+
 				//setting value to unused interpolator channels and avoid initialization warnings
 				o.ase_texcoord8.zw = 0;
 				#ifdef ASE_ABSOLUTE_VERTEX_POS
@@ -384,21 +384,21 @@ Shader "SodaCraft/SodaCharacter"
 					half fogFactor = 0;
 				#endif
 				o.fogFactorAndVertexLight = half4(fogFactor, vertexLight);
-				
+
 				#if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
 				VertexPositionInputs vertexInput = (VertexPositionInputs)0;
 				vertexInput.positionWS = positionWS;
 				vertexInput.positionCS = positionCS;
 				o.shadowCoord = GetShadowCoord( vertexInput );
 				#endif
-				
+
 				o.clipPos = positionCS;
 				#if defined(ASE_NEEDS_FRAG_SCREEN_POSITION)
 				o.screenPos = ComputeScreenPos(positionCS);
 				#endif
 				return o;
 			}
-			
+
 			#if defined(TESSELLATION_ON)
 			struct VertexControl
 			{
@@ -408,7 +408,7 @@ Shader "SodaCraft/SodaCharacter"
 				float4 texcoord : TEXCOORD0;
 				float4 texcoord1 : TEXCOORD1;
 				float4 texcoord2 : TEXCOORD2;
-				
+
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -429,7 +429,7 @@ Shader "SodaCraft/SodaCharacter"
 				o.texcoord = v.texcoord;
 				o.texcoord1 = v.texcoord1;
 				o.texcoord2 = v.texcoord2;
-				
+
 				return o;
 			}
 
@@ -472,7 +472,7 @@ Shader "SodaCraft/SodaCharacter"
 				o.texcoord = patch[0].texcoord * bary.x + patch[1].texcoord * bary.y + patch[2].texcoord * bary.z;
 				o.texcoord1 = patch[0].texcoord1 * bary.x + patch[1].texcoord1 * bary.y + patch[2].texcoord1 * bary.z;
 				o.texcoord2 = patch[0].texcoord2 * bary.x + patch[1].texcoord2 * bary.y + patch[2].texcoord2 * bary.z;
-				
+
 				#if defined(ASE_PHONG_TESSELLATION)
 				float3 pp[3];
 				for (int i = 0; i < 3; ++i)
@@ -491,12 +491,12 @@ Shader "SodaCraft/SodaCharacter"
 			#endif
 
 			#if defined(ASE_EARLY_Z_DEPTH_OPTIMIZE)
-				#define ASE_SV_DEPTH SV_DepthLessEqual  
+				#define ASE_SV_DEPTH SV_DepthLessEqual
 			#else
 				#define ASE_SV_DEPTH SV_Depth
 			#endif
 
-			half4 frag ( VertexOutput IN 
+			half4 frag ( VertexOutput IN
 						#ifdef ASE_DEPTH_WRITE_ON
 						,out float outputDepth : ASE_SV_DEPTH
 						#endif
@@ -531,7 +531,7 @@ Shader "SodaCraft/SodaCharacter"
 				#elif defined(MAIN_LIGHT_CALCULATE_SHADOWS)
 					ShadowCoords = TransformWorldToShadowCoord( WorldPosition );
 				#endif
-	
+
 				WorldViewDirection = SafeNormalize( WorldViewDirection );
 
 				//float4 _MainTex_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_MainTex_ST);
@@ -548,13 +548,13 @@ Shader "SodaCraft/SodaCharacter"
 				float AlphaMask174 = tex2DNode10.a;
 				float4 lerpResult171 = lerp( ( Albedo93 * lerpResult106 ) , _AlphaMaskTint , ( AlphaMask174 * _AlphaMask ));
 				float4 AlbedoPass203 = lerpResult171;
-				
+
 				//float4 _NormalMap_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_NormalMap_ST);
 				float2 uv_NormalMap = IN.ase_texcoord8.xy * _NormalMap_ST.xy + _NormalMap_ST.zw;
 				float3 unpack47 = UnpackNormalScale( tex2D( _NormalMap, uv_NormalMap ), _NormalScale );
 				unpack47.z = lerp( 1, unpack47.z, saturate(_NormalScale) );
 				float3 NormalMap48 = unpack47;
-				
+
 				//float4 _EmissionMap_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_EmissionMap_ST);
 				float2 uv_EmissionMap = IN.ase_texcoord8.xy * _EmissionMap_ST.xy + _EmissionMap_ST.zw;
 				float4 color114 = IsGammaSpace() ? float4(2.981132,1.578453,1.110893,0) : float4(11.05704,2.729667,1.260314,0);
@@ -572,20 +572,20 @@ Shader "SodaCraft/SodaCharacter"
 				float smoothstepResult119 = smoothstep( 0.4 , 0.6 , saturate( pow( temp_output_166_0 , ( _FresnelPower * ( 1.0 - HurtValue110 ) ) ) ));
 				float4 HurtColor129 = ( color114 * smoothstepResult119 * saturate( HurtValue110 ) );
 				float4 Emission42 = max( ( tex2D( _EmissionMap, uv_EmissionMap ) * _EmissionColor ) , HurtColor129 );
-				
+
 			//	float4 _MetallicSmoothness_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_MetallicSmoothness_ST);
 				float2 uv_MetallicSmoothness = IN.ase_texcoord8.xy * _MetallicSmoothness_ST.xy + _MetallicSmoothness_ST.zw;
 				float4 tex2DNode28 = tex2D( _MetallicSmoothness, uv_MetallicSmoothness );
 				float Metaiic40 = ( _Metallic * tex2DNode28.r );
-				
+
 				float Smoothness41 = ( _Smoothness * tex2DNode28.a );
-				
+
 				float Occlusion201 = 1;
-				
+
 				float Cutout190 = _Cutout;
 				float lerpResult195 = lerp( 1.0 , (lerpResult171).a , Cutout190);
 				float Alpha199 = lerpResult195;
-				
+
 				float3 Albedo = AlbedoPass203.rgb;
 				float3 Normal = NormalMap48;
 				float3 Emission = Emission42.rgb;
@@ -604,7 +604,7 @@ Shader "SodaCraft/SodaCharacter"
 				#ifdef ASE_DEPTH_WRITE_ON
 				float DepthValue = 0;
 				#endif
-				
+
 				#ifdef _CLEARCOAT
 				float CoatMask = 0;
 				float CoatSmoothness = 0;
@@ -618,7 +618,7 @@ Shader "SodaCraft/SodaCharacter"
 				InputData inputData = (InputData)0;
 				inputData.positionWS = WorldPosition;
 				inputData.viewDirectionWS = WorldViewDirection;
-				
+
 
 				#ifdef _NORMALMAP
 					#if _NORMAL_DROPOFF_TS
@@ -662,7 +662,7 @@ Shader "SodaCraft/SodaCharacter"
 				#ifdef _ASE_BAKEDGI
 					inputData.bakedGI = BakedGI;
 				#endif
-				
+
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(IN.clipPos);
 				inputData.shadowMask = SAMPLE_SHADOWMASK(IN.lightmapUVOrVertexSH.xy);
 
@@ -792,11 +792,11 @@ Shader "SodaCraft/SodaCharacter"
 
 			ENDHLSL
 		}
-		
-		
+
+
 		Pass
 		{
-			
+
 			Name "ShadowCaster"
 			Tags { "LightMode"="ShadowCaster" }
 
@@ -806,7 +806,7 @@ Shader "SodaCraft/SodaCharacter"
 			ColorMask 0
 
 			HLSLPROGRAM
-			
+
 			#define _NORMAL_DROPOFF_TS 1
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_fog
@@ -817,7 +817,7 @@ Shader "SodaCraft/SodaCharacter"
 			#define ASE_VERSION 19701
 			#define ASE_SRP_VERSION 140011
 
-			
+
 			#pragma vertex vert
 			#pragma fragment frag
 
@@ -905,7 +905,7 @@ Shader "SodaCraft/SodaCharacter"
 			UNITY_INSTANCING_BUFFER_END(SodaCraftSodaCharacter)
 
 
-			
+
 			float3 _LightDirection;
 			float3 _LightPosition;
 
@@ -917,7 +917,7 @@ Shader "SodaCraft/SodaCharacter"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO( o );
 
 				o.ase_texcoord2.xy = v.ase_texcoord.xy;
-				
+
 				//setting value to unused interpolator channels and avoid initialization warnings
 				o.ase_texcoord2.zw = 0;
 				#ifdef ASE_ABSOLUTE_VERTEX_POS
@@ -948,7 +948,7 @@ Shader "SodaCraft/SodaCharacter"
 			#endif
 
 				float4 clipPos = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, lightDirectionWS));
-			
+
 			#if UNITY_REVERSED_Z
 				clipPos.z = min(clipPos.z, UNITY_NEAR_CLIP_VALUE);
 			#else
@@ -1015,7 +1015,7 @@ Shader "SodaCraft/SodaCharacter"
 			[domain("tri")]
 			[partitioning("fractional_odd")]
 			[outputtopology("triangle_cw")]
-		
+
 			[outputcontrolpoints(3)]
 			VertexControl HullFunction(InputPatch<VertexControl, 3> patch, uint id : SV_OutputControlPointID)
 			{
@@ -1047,12 +1047,12 @@ Shader "SodaCraft/SodaCharacter"
 			#endif
 
 			#if defined(ASE_EARLY_Z_DEPTH_OPTIMIZE)
-				#define ASE_SV_DEPTH SV_DepthLessEqual  
+				#define ASE_SV_DEPTH SV_DepthLessEqual
 			#else
 				#define ASE_SV_DEPTH SV_Depth
 			#endif
 
-			half4 frag(	VertexOutput IN 
+			half4 frag(	VertexOutput IN
 						#ifdef ASE_DEPTH_WRITE_ON
 						,out float outputDepth : ASE_SV_DEPTH
 						#endif
@@ -1060,7 +1060,7 @@ Shader "SodaCraft/SodaCharacter"
 			{
 				UNITY_SETUP_INSTANCE_ID( IN );
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX( IN );
-				
+
 				#if defined(ASE_NEEDS_FRAG_WORLD_POSITION)
 				float3 WorldPosition = IN.worldPos;
 				#endif
@@ -1090,7 +1090,7 @@ Shader "SodaCraft/SodaCharacter"
 				float Cutout190 = _Cutout;
 				float lerpResult195 = lerp( 1.0 , (lerpResult171).a , Cutout190);
 				float Alpha199 = lerpResult195;
-				
+
 				float Alpha = Alpha199;
 				float AlphaClipThreshold = 0.5;
 				float AlphaClipThresholdShadow = 0.5;
@@ -1119,10 +1119,10 @@ Shader "SodaCraft/SodaCharacter"
 			ENDHLSL
 		}
 
-		
+
 		Pass
 		{
-			
+
 			Name "DepthOnly"
 			Tags { "LightMode"="DepthOnly" }
 
@@ -1131,7 +1131,7 @@ Shader "SodaCraft/SodaCharacter"
 			AlphaToMask Off
 
 			HLSLPROGRAM
-			
+
 			#define _NORMAL_DROPOFF_TS 1
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_fog
@@ -1142,12 +1142,12 @@ Shader "SodaCraft/SodaCharacter"
 			#define ASE_VERSION 19701
 			#define ASE_SRP_VERSION 140011
 
-			
+
 			#pragma vertex vert
 			#pragma fragment frag
 
 			#define SHADERPASS SHADERPASS_DEPTHONLY
-        
+
 			#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 			#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Texture.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -1228,7 +1228,7 @@ Shader "SodaCraft/SodaCharacter"
 			UNITY_INSTANCING_BUFFER_END(SodaCraftSodaCharacter)
 
 
-			
+
 			VertexOutput VertexFunction( VertexInput v  )
 			{
 				VertexOutput o = (VertexOutput)0;
@@ -1237,7 +1237,7 @@ Shader "SodaCraft/SodaCharacter"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
 				o.ase_texcoord2.xy = v.ase_texcoord.xy;
-				
+
 				//setting value to unused interpolator channels and avoid initialization warnings
 				o.ase_texcoord2.zw = 0;
 				#ifdef ASE_ABSOLUTE_VERTEX_POS
@@ -1351,11 +1351,11 @@ Shader "SodaCraft/SodaCharacter"
 			#endif
 
 			#if defined(ASE_EARLY_Z_DEPTH_OPTIMIZE)
-				#define ASE_SV_DEPTH SV_DepthLessEqual  
+				#define ASE_SV_DEPTH SV_DepthLessEqual
 			#else
 				#define ASE_SV_DEPTH SV_Depth
 			#endif
-			half4 frag(	VertexOutput IN 
+			half4 frag(	VertexOutput IN
 						#ifdef ASE_DEPTH_WRITE_ON
 						,out float outputDepth : ASE_SV_DEPTH
 						#endif
@@ -1393,7 +1393,7 @@ Shader "SodaCraft/SodaCharacter"
 				float Cutout190 = _Cutout;
 				float lerpResult195 = lerp( 1.0 , (lerpResult171).a , Cutout190);
 				float Alpha199 = lerpResult195;
-				
+
 				float Alpha = Alpha199;
 				float AlphaClipThreshold = 0.5;
 				#ifdef ASE_DEPTH_WRITE_ON
@@ -1415,14 +1415,14 @@ Shader "SodaCraft/SodaCharacter"
 			}
 			ENDHLSL
 		}
-		
-		
-		
 
-		
+
+
+
+
 		Pass
 		{
-			
+
 			Name "DepthNormals"
 			Tags { "LightMode"="DepthNormals" }
 
@@ -1432,7 +1432,7 @@ Shader "SodaCraft/SodaCharacter"
             ZWrite On
 
 			HLSLPROGRAM
-			
+
 			#define _NORMAL_DROPOFF_TS 1
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_fog
@@ -1443,7 +1443,7 @@ Shader "SodaCraft/SodaCharacter"
 			#define ASE_VERSION 19701
 			#define ASE_SRP_VERSION 140011
 
-			
+
 			#pragma vertex vert
 			#pragma fragment frag
 
@@ -1531,7 +1531,7 @@ Shader "SodaCraft/SodaCharacter"
 			UNITY_INSTANCING_BUFFER_END(SodaCraftSodaCharacter)
 
 
-			
+
 			VertexOutput VertexFunction( VertexInput v  )
 			{
 				VertexOutput o = (VertexOutput)0;
@@ -1540,7 +1540,7 @@ Shader "SodaCraft/SodaCharacter"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
 				o.ase_texcoord4.xy = v.ase_texcoord.xy;
-				
+
 				//setting value to unused interpolator channels and avoid initialization warnings
 				o.ase_texcoord4.zw = 0;
 				#ifdef ASE_ABSOLUTE_VERTEX_POS
@@ -1629,7 +1629,7 @@ Shader "SodaCraft/SodaCharacter"
 			[domain("tri")]
 			[partitioning("fractional_odd")]
 			[outputtopology("triangle_cw")]
-	
+
 			[outputcontrolpoints(3)]
 			VertexControl HullFunction(InputPatch<VertexControl, 3> patch, uint id : SV_OutputControlPointID)
 			{
@@ -1662,11 +1662,11 @@ Shader "SodaCraft/SodaCharacter"
 			#endif
 
 			#if defined(ASE_EARLY_Z_DEPTH_OPTIMIZE)
-				#define ASE_SV_DEPTH SV_DepthLessEqual  
+				#define ASE_SV_DEPTH SV_DepthLessEqual
 			#else
 				#define ASE_SV_DEPTH SV_Depth
 			#endif
-			half4 frag(	VertexOutput IN 
+			half4 frag(	VertexOutput IN
 						#ifdef ASE_DEPTH_WRITE_ON
 						,out float outputDepth : ASE_SV_DEPTH
 						#endif
@@ -1679,7 +1679,7 @@ Shader "SodaCraft/SodaCharacter"
 				float3 WorldPosition = IN.worldPos;
 				#endif
 				float4 ShadowCoords = float4( 0, 0, 0, 0 );
-				
+
 				float3 WorldNormal = IN.worldNormal;
 				float4 WorldTangent = IN.worldTangent;
 
@@ -1696,7 +1696,7 @@ Shader "SodaCraft/SodaCharacter"
 				float3 unpack47 = UnpackNormalScale( tex2D( _NormalMap, uv_NormalMap ), _NormalScale );
 				unpack47.z = lerp( 1, unpack47.z, saturate(_NormalScale) );
 				float3 NormalMap48 = unpack47;
-				
+
 				//float4 _MainTex_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_MainTex_ST);
 				float2 uv_MainTex = IN.ase_texcoord4.xy * _MainTex_ST.xy + _MainTex_ST.zw;
 				float4 tex2DNode10 = tex2D( _MainTex, uv_MainTex );
@@ -1713,7 +1713,7 @@ Shader "SodaCraft/SodaCharacter"
 				float Cutout190 = _Cutout;
 				float lerpResult195 = lerp( 1.0 , (lerpResult171).a , Cutout190);
 				float Alpha199 = lerpResult195;
-				
+
 				float3 Normal = NormalMap48;
 				float Alpha = Alpha199;
 				float AlphaClipThreshold = 0.5;
@@ -1728,18 +1728,18 @@ Shader "SodaCraft/SodaCharacter"
 				#ifdef LOD_FADE_CROSSFADE
 					LODDitheringTransition( IN.clipPos.xyz, unity_LODFade.x );
 				#endif
-				
+
 				#ifdef ASE_DEPTH_WRITE_ON
 				outputDepth = DepthValue;
 				#endif
-				
+
 				#if defined(_GBUFFER_NORMALS_OCT)
 					float2 octNormalWS = PackNormalOctQuadEncode(WorldNormal);
 					float2 remappedOctNormalWS = saturate(octNormalWS * 0.5 + 0.5);
 					half3 packedNormalWS = PackFloat2To888(remappedOctNormalWS);
 					return half4(packedNormalWS, 0.0);
 				#else
-					
+
 					#if defined(_NORMALMAP)
 						#if _NORMAL_DROPOFF_TS
 							float crossSign = (WorldTangent.w > 0.0 ? 1.0 : -1.0) * GetOddNegativeScale();
@@ -1760,19 +1760,19 @@ Shader "SodaCraft/SodaCharacter"
 			ENDHLSL
 		}
 
-		
+
 		Pass
 		{
-			
+
 			Name "GBuffer"
 			Tags { "LightMode"="UniversalGBuffer" }
-			
+
 			Blend One Zero, One Zero
 			ColorMask RGBA
-			
+
 
 			HLSLPROGRAM
-			
+
 			#define _NORMAL_DROPOFF_TS 1
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_fog
@@ -1783,12 +1783,12 @@ Shader "SodaCraft/SodaCharacter"
 			#define ASE_VERSION 19701
 			#define ASE_SRP_VERSION 140011
 
-			
+
 			// #pragma multi_compile _ LIGHTMAP_ON
 			// #pragma multi_compile _ DYNAMICLIGHTMAP_ON
 			// #pragma multi_compile _ DIRLIGHTMAP_COMBINED
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
-			
+
 			#pragma multi_compile _ _REFLECTION_PROBE_BLENDING
 			#pragma multi_compile _ _REFLECTION_PROBE_BOX_PROJECTION
 
@@ -1832,7 +1832,7 @@ Shader "SodaCraft/SodaCharacter"
 				float4 texcoord : TEXCOORD0;
 				float4 texcoord1 : TEXCOORD1;
 				float4 texcoord2 : TEXCOORD2;
-				
+
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -1912,7 +1912,7 @@ Shader "SodaCraft/SodaCharacter"
 			UNITY_INSTANCING_BUFFER_END(SodaCraftSodaCharacter)
 
 
-			
+
 			VertexOutput VertexFunction( VertexInput v  )
 			{
 				VertexOutput o = (VertexOutput)0;
@@ -1921,7 +1921,7 @@ Shader "SodaCraft/SodaCharacter"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
 				o.ase_texcoord8.xy = v.texcoord.xy;
-				
+
 				//setting value to unused interpolator channels and avoid initialization warnings
 				o.ase_texcoord8.zw = 0;
 				#ifdef ASE_ABSOLUTE_VERTEX_POS
@@ -1966,21 +1966,21 @@ Shader "SodaCraft/SodaCharacter"
 					half fogFactor = 0;
 				#endif
 				o.fogFactorAndVertexLight = half4(fogFactor, vertexLight);
-				
+
 				#if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
 				VertexPositionInputs vertexInput = (VertexPositionInputs)0;
 				vertexInput.positionWS = positionWS;
 				vertexInput.positionCS = positionCS;
 				o.shadowCoord = GetShadowCoord( vertexInput );
 				#endif
-				
+
 				o.clipPos = positionCS;
 				#if defined(ASE_NEEDS_FRAG_SCREEN_POSITION)
 				o.screenPos = ComputeScreenPos(positionCS);
 				#endif
 				return o;
 			}
-			
+
 			#if defined(TESSELLATION_ON)
 			struct VertexControl
 			{
@@ -1990,7 +1990,7 @@ Shader "SodaCraft/SodaCharacter"
 				float4 texcoord : TEXCOORD0;
 				float4 texcoord1 : TEXCOORD1;
 				float4 texcoord2 : TEXCOORD2;
-				
+
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -2011,11 +2011,11 @@ Shader "SodaCraft/SodaCharacter"
 				o.texcoord = v.texcoord;
 				o.texcoord1 = v.texcoord1;
 				o.texcoord2 = v.texcoord2;
-				
+
 				return o;
 			}
 
-		
+
 			[domain("tri")]
 			[partitioning("fractional_odd")]
 			[outputtopology("triangle_cw")]
@@ -2036,7 +2036,7 @@ Shader "SodaCraft/SodaCharacter"
 				o.texcoord = patch[0].texcoord * bary.x + patch[1].texcoord * bary.y + patch[2].texcoord * bary.z;
 				o.texcoord1 = patch[0].texcoord1 * bary.x + patch[1].texcoord1 * bary.y + patch[2].texcoord1 * bary.z;
 				o.texcoord2 = patch[0].texcoord2 * bary.x + patch[1].texcoord2 * bary.y + patch[2].texcoord2 * bary.z;
-				
+
 				#if defined(ASE_PHONG_TESSELLATION)
 				float3 pp[3];
 				for (int i = 0; i < 3; ++i)
@@ -2055,11 +2055,11 @@ Shader "SodaCraft/SodaCharacter"
 			#endif
 
 			#if defined(ASE_EARLY_Z_DEPTH_OPTIMIZE)
-				#define ASE_SV_DEPTH SV_DepthLessEqual  
+				#define ASE_SV_DEPTH SV_DepthLessEqual
 			#else
 				#define ASE_SV_DEPTH SV_Depth
 			#endif
-			FragmentOutput frag ( VertexOutput IN 
+			FragmentOutput frag ( VertexOutput IN
 								#ifdef ASE_DEPTH_WRITE_ON
 								,out float outputDepth : ASE_SV_DEPTH
 								#endif
@@ -2098,7 +2098,7 @@ Shader "SodaCraft/SodaCharacter"
 				#endif
 
 
-	
+
 				WorldViewDirection = SafeNormalize( WorldViewDirection );
 
 				//float4 _MainTex_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_MainTex_ST);
@@ -2115,13 +2115,13 @@ Shader "SodaCraft/SodaCharacter"
 				float AlphaMask174 = tex2DNode10.a;
 				float4 lerpResult171 = lerp( ( Albedo93 * 1 ) , _AlphaMaskTint , ( AlphaMask174 * _AlphaMask ));
 				float4 AlbedoPass203 = lerpResult171;
-				
+
 				//float4 _NormalMap_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_NormalMap_ST);
 				float2 uv_NormalMap = IN.ase_texcoord8.xy * _NormalMap_ST.xy + _NormalMap_ST.zw;
 				float3 unpack47 = UnpackNormalScale( tex2D( _NormalMap, uv_NormalMap ), _NormalScale );
 				unpack47.z = lerp( 1, unpack47.z, saturate(_NormalScale) );
 				float3 NormalMap48 = unpack47;
-				
+
 				//float4 _EmissionMap_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_EmissionMap_ST);
 				float2 uv_EmissionMap = IN.ase_texcoord8.xy * _EmissionMap_ST.xy + _EmissionMap_ST.zw;
 				float4 color114 = IsGammaSpace() ? float4(2.981132,1.578453,1.110893,0) : float4(11.05704,2.729667,1.260314,0);
@@ -2139,20 +2139,20 @@ Shader "SodaCraft/SodaCharacter"
 				float smoothstepResult119 = smoothstep( 0.4 , 0.6 , saturate( pow( temp_output_166_0 , ( _FresnelPower * ( 1.0 - HurtValue110 ) ) ) ));
 				float4 HurtColor129 = ( color114 * smoothstepResult119 * saturate( HurtValue110 ) );
 				float4 Emission42 = max( ( tex2D( _EmissionMap, uv_EmissionMap ) * _EmissionColor ) , HurtColor129 );
-				
+
 				//float4 _MetallicSmoothness_ST_Instance = UNITY_ACCESS_INSTANCED_PROP(SodaCraftSodaCharacter,_MetallicSmoothness_ST);
 				float2 uv_MetallicSmoothness = IN.ase_texcoord8.xy * _MetallicSmoothness_ST.xy + _MetallicSmoothness_ST.zw;
 				float4 tex2DNode28 = tex2D( _MetallicSmoothness, uv_MetallicSmoothness );
 				float Metaiic40 = ( _Metallic * tex2DNode28.r );
-				
+
 				float Smoothness41 = ( _Smoothness * tex2DNode28.a );
-				
+
 				float Occlusion201 =1;
-				
+
 				float Cutout190 = _Cutout;
 				float lerpResult195 = lerp( 1.0 , (lerpResult171).a , Cutout190);
 				float Alpha199 = lerpResult195;
-				
+
 				float3 Albedo = AlbedoPass203.rgb;
 				float3 Normal = NormalMap48;
 				float3 Emission = Emission42.rgb;
@@ -2194,7 +2194,7 @@ Shader "SodaCraft/SodaCharacter"
 				#else
 					inputData.normalWS = WorldNormal;
 				#endif
-					
+
 				inputData.normalWS = NormalizeNormalPerPixel(inputData.normalWS);
 				inputData.viewDirectionWS = SafeNormalize( WorldViewDirection );
 
@@ -2212,15 +2212,15 @@ Shader "SodaCraft/SodaCharacter"
 					float3 SH = IN.lightmapUVOrVertexSH.xyz;
 				#endif
 
-				
 
-				
+
+
 				//#if defined(DYNAMICLIGHTMAP_ON)
 					//inputData.bakedGI = SAMPLE_GI( IN.lightmapUVOrVertexSH.xy, IN.dynamicLightmapUV.xy, SH, inputData.normalWS);
 				//	#else
 					inputData.bakedGI = SAMPLE_GI( IN.lightmapUVOrVertexSH.xy, SH, inputData.normalWS );
 				//#endif
-				
+
 
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(IN.clipPos);
 				inputData.shadowMask = SAMPLE_SHADOWMASK(IN.lightmapUVOrVertexSH.xy);
@@ -2255,11 +2255,11 @@ Shader "SodaCraft/SodaCharacter"
 				//MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI, inputData.shadowMask);
 				color.rgb = GlobalIllumination(brdfData, inputData.bakedGI, Occlusion, inputData.positionWS, inputData.normalWS, inputData.viewDirectionWS);
 				color.a = Alpha;
-				
+
 				#ifdef ASE_FINAL_COLOR_ALPHA_MULTIPLY
 					color.rgb *= color.a;
 				#endif
-				
+
 				#ifdef ASE_FOG
 					//#ifdef TERRAIN_SPLAT_ADDPASS
 					//	color.rgb = MixFogColor(color.rgb, half3( 0, 0, 0 ), IN.fogFactorAndVertexLight.x );
@@ -2267,22 +2267,22 @@ Shader "SodaCraft/SodaCharacter"
 						color.rgb = MixFog(color.rgb, IN.fogFactorAndVertexLight.x);
 					//#endif
 				#endif
-				
+
 				#ifdef ASE_DEPTH_WRITE_ON
 					outputDepth = DepthValue;
 				#endif
-				
+
 				return BRDFDataToGbuffer(brdfData, inputData, Smoothness, Emission + color.rgb);
 			}
 
 			ENDHLSL
 		}
 
-		
-     
+
+
 	}
-	
+
 	CustomEditor "UnityEditor.ShaderGraphLitGUI"
 	Fallback "Hidden/InternalErrorShader"
-	
+
 }
