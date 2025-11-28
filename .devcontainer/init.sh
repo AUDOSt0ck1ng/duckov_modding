@@ -5,14 +5,10 @@ echo "=========================================="
 echo "初始化 Duckov Modding 開發環境..."
 echo "=========================================="
 
-# 安裝 Python pip
-echo "安裝 Python pip..."
+# 安裝 Python3 和 pre-commit
+echo "安裝 Python3 和 pre-commit..."
 apt-get update -qq
-apt-get install -y python3-pip > /dev/null 2>&1
-
-# 安裝 pre-commit
-echo "安裝 pre-commit..."
-pip3 install pre-commit --quiet
+apt-get install -y python3 python3-pip pre-commit > /dev/null 2>&1
 
 # 安裝 pre-commit hooks
 echo "配置 pre-commit hooks..."
