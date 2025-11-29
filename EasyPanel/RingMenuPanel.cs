@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using ItemStatsSystem;
 using Duckov;
-using Saves;
 
 namespace EasyPanel
 {
@@ -68,9 +68,17 @@ namespace EasyPanel
 	{
 		Debug.Log("[EasyPanel] LevelManager 初始化完成，開始載入格子配置");
 
-		// 場景初始化後重新載入配置
-		if (configLoaded && slots != null && slots.Count > 0)
+		// 確保 UI 已初始化
+		if (!configLoaded && slots != null && slots.Count > 0)
 		{
+			// UI 已創建但還沒載入過配置
+			LoadSlotConfiguration();
+			configLoaded = true;
+			Debug.Log("[EasyPanel] 首次載入格子配置完成");
+		}
+		else if (configLoaded && slots != null && slots.Count > 0)
+		{
+			// 場景切換後重新載入配置
 			LoadSlotConfiguration();
 			RefreshAllSlots();
 			Debug.Log("[EasyPanel] 格子配置已重新載入");
@@ -85,20 +93,19 @@ namespace EasyPanel
 		// 創建圓盤背景
 		CreateDiskBackground();
 
-		// 創建中心設定按鈕
+		// 創建中心設定按鈕 (暫時隱藏)
 		CreateCenterButton();
 
 		// 創建格子
 		CreateSlots();
 
-		// 立即載入配置
-		LoadSlotConfiguration();
-		configLoaded = true;
+		// 不在這裡載入配置,等待 LevelManager 初始化完成後再載入
+		// 這樣可以確保角色、背包、裝備都已準備好
 
 		// 初始化時隱藏
 		gameObject.SetActive(false);
 
-		Debug.Log($"[EasyPanel] 圓盤UI已初始化，共{slotCount}個格子");
+		Debug.Log($"[EasyPanel] 圓盤UI已初始化，共{slotCount}個格子，等待載入配置...");
 	}
 
 		/// <summary>
@@ -125,44 +132,12 @@ namespace EasyPanel
 		}
 
 		/// <summary>
-		/// 創建中心設定按鈕
+		/// 創建中心設定按鈕 (暫時隱藏,功能未實作)
 		/// </summary>
 		private void CreateCenterButton()
 		{
-			GameObject centerButton = new GameObject("CenterButton");
-			centerButton.transform.SetParent(diskBackground.transform, false);
-
-			var buttonRect = centerButton.AddComponent<RectTransform>();
-			buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
-			buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
-			buttonRect.pivot = new Vector2(0.5f, 0.5f);
-			buttonRect.anchoredPosition = Vector2.zero;
-			buttonRect.sizeDelta = new Vector2(60f, 60f); // 直徑60的圓形按鈕
-
-			// 添加圓形背景
-			var buttonImage = centerButton.AddComponent<Image>();
-			buttonImage.color = new Color(0.4f, 0.4f, 0.4f, 0.6f); // 半透明灰色
-
-			// 添加外框
-			var outline = centerButton.AddComponent<Outline>();
-			outline.effectColor = new Color(0.9f, 0.7f, 0.3f, 0.8f); // 金色輪廓
-			outline.effectDistance = new Vector2(2, 2);
-
-			// 添加設定圖標文字 (齒輪符號)
-			GameObject iconText = new GameObject("Icon");
-			iconText.transform.SetParent(centerButton.transform, false);
-
-			var textRect = iconText.AddComponent<RectTransform>();
-			textRect.anchorMin = Vector2.zero;
-			textRect.anchorMax = Vector2.one;
-			textRect.sizeDelta = Vector2.zero;
-
-			var text = iconText.AddComponent<Text>();
-			text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-			text.fontSize = 30;
-			text.text = "⚙"; // 齒輪符號
-			text.alignment = TextAnchor.MiddleCenter;
-			text.color = Color.white;
+			// TODO: 未來實作設定功能時再顯示
+			// 暫時不創建中心按鈕
 		}
 
 		/// <summary>
@@ -273,6 +248,14 @@ namespace EasyPanel
 	{
 		base.OnOpen();
 		isOpen = true;
+
+		// 首次打開時嘗試載入配置
+		if (!configLoaded)
+		{
+			Debug.Log("[EasyPanel] 首次打開,嘗試載入配置...");
+			LoadSlotConfiguration();
+			configLoaded = true; // 標記已嘗試過載入(無論有沒有文件)
+		}
 
 		// 不暫停遊戲輸入，只顯示鼠標
 		Cursor.visible = true;
@@ -437,12 +420,16 @@ namespace EasyPanel
 	}
 
 	/// <summary>
-	/// 保存格子配置 - 使用 ES3 SavesSystem
+	/// 保存格子配置 - 使用獨立 JSON 文件
 	/// </summary>
 	private void SaveSlotConfiguration()
 	{
 		try
 		{
+			Debug.Log("[EasyPanel] SaveConfig 開始");
+			Debug.Log($"[EasyPanel] 保存目錄: {SaveDirectory}");
+			Debug.Log($"[EasyPanel] 保存路徑: {SaveFilePath}");
+
 			List<ItemReference> references = new List<ItemReference>();
 
 			for (int i = 0; i < slots.Count; i++)
@@ -457,34 +444,65 @@ namespace EasyPanel
 			}
 
 			RadialMenuData data = RadialMenuData.FromSlotReferences(references);
+			Debug.Log($"[EasyPanel] 創建 RadialMenuData: {data}");
 
-			// 使用 SavesSystem 保存到遊戲存檔
-			SavesSystem.Save("EasyPanel/RadialMenu", data);
+			string json = data.ToJson(); // 使用手動序列化，照抄 EquipmentSkinSystem
+			Debug.Log($"[EasyPanel] JSON 內容長度: {json.Length} 字元");
+			Debug.Log($"[EasyPanel] JSON 內容:\n{json}");
 
-			int nonEmpty = data.GetNonEmptySlotCount();
-			Debug.Log($"[EasyPanel] ✓ 格子配置已保存到遊戲存檔，共 {nonEmpty}/{data.slotCount} 個有效配置");
+			Debug.Log($"[EasyPanel] 準備寫入檔案: {SaveFilePath}");
+			File.WriteAllText(SaveFilePath, json);
+			Debug.Log($"[EasyPanel] File.WriteAllText 已執行");
+
+			// 關鍵：驗證檔案是否真的被寫入
+			if (File.Exists(SaveFilePath))
+			{
+				string verifyJson = File.ReadAllText(SaveFilePath);
+				Debug.Log($"[EasyPanel] ✓ 驗證成功，檔案存在，大小: {verifyJson.Length} 字元");
+
+				int nonEmpty = data.GetNonEmptySlotCount();
+				Debug.Log($"[EasyPanel] ✓ 格子配置已保存到 {Path.GetFullPath(SaveFilePath)}，共 {nonEmpty}/{data.slotCount} 個有效配置");
+			}
+			else
+			{
+				Debug.LogError($"[EasyPanel] ❌ 檔案寫入後不存在: {SaveFilePath}");
+			}
 		}
 		catch (System.Exception e)
 		{
-			Debug.LogError($"[EasyPanel] 保存格子配置失敗: {e.Message}\n{e.StackTrace}");
+			Debug.LogError($"[EasyPanel] ========== 保存格子配置失敗 ==========");
+			Debug.LogError($"[EasyPanel] 錯誤訊息: {e.Message}");
+			Debug.LogError($"[EasyPanel] 堆疊追蹤:\n{e.StackTrace}");
+			Debug.LogError("[EasyPanel] ========================================");
 		}
 	}
 
 	/// <summary>
-	/// 載入格子配置 - 使用 ES3 SavesSystem
+	/// 載入格子配置 - 使用獨立 JSON 文件
 	/// </summary>
 	private void LoadSlotConfiguration()
 	{
-		Debug.Log("[EasyPanel] 開始載入格子配置...");
-
 		try
 		{
-			// 從 SavesSystem 載入
-			RadialMenuData data = SavesSystem.Load<RadialMenuData>("EasyPanel/RadialMenu");
+			Debug.Log("[EasyPanel] LoadConfig 開始");
+			Debug.Log($"[EasyPanel] 尋找檔案: {SaveFilePath}");
+
+			if (!File.Exists(SaveFilePath))
+			{
+				Debug.Log($"[EasyPanel] 未找到配置文件: {SaveFilePath}");
+				Debug.Log("[EasyPanel] 首次使用，請拖曳物品到格子來創建配置");
+				return;
+			}
+
+			string json = File.ReadAllText(SaveFilePath);
+			Debug.Log($"[EasyPanel] 載入 JSON 長度: {json.Length}");
+			Debug.Log($"[EasyPanel] 載入 JSON 內容:\n{json}");
+
+			RadialMenuData data = RadialMenuData.FromJson(json); // 使用手動解析，照抄 EquipmentSkinSystem
 
 			if (data == null)
 			{
-				Debug.Log("[EasyPanel] 未找到保存的配置");
+				Debug.LogWarning("[EasyPanel] 配置文件解析失敗");
 				return;
 			}
 
@@ -515,9 +533,36 @@ namespace EasyPanel
 		}
 		catch (System.Exception e)
 		{
-			Debug.LogError($"[EasyPanel] 載入格子配置失敗: {e.Message}\n{e.StackTrace}");
+			Debug.LogError($"[EasyPanel] ========== 載入格子配置失敗 ==========");
+			Debug.LogError($"[EasyPanel] 錯誤訊息: {e.Message}");
+			Debug.LogError($"[EasyPanel] 堆疊追蹤:\n{e.StackTrace}");
+			Debug.LogError("[EasyPanel] ========================================");
 		}
 	}
+
+	/// <summary>
+	/// 獲取保存目錄（屬性，每次存取都會確保目錄存在）
+	/// </summary>
+	private string SaveDirectory
+	{
+		get
+		{
+			// Path.Combine 會自動處理跨平台路徑分隔符
+			string path = Path.Combine(Application.persistentDataPath, "EasyPanel");
+
+			if (!Directory.Exists(path))
+			{
+				Directory.CreateDirectory(path);
+				Debug.Log($"[EasyPanel] 創建目錄: {path}");
+			}
+			return path;
+		}
+	}
+
+	/// <summary>
+	/// 獲取配置文件完整路徑
+	/// </summary>
+	private string SaveFilePath => Path.Combine(SaveDirectory, "panel_config.json");
 
 	/// <summary>
 	/// 打開設定介面

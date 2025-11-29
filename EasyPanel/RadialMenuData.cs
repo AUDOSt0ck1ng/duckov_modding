@@ -71,14 +71,102 @@ namespace EasyPanel
 		/// </summary>
 		public static RadialMenuData FromSlotReferences(List<ItemReference> references)
 		{
-			RadialMenuData data = new RadialMenuData
-			{
-				slotCount = references.Count
-			};
+			RadialMenuData data = new RadialMenuData();
+			data.slotCount = references.Count;
+			data.slots = new List<SlotData>(); // ✅ 明確初始化 slots 列表
 
 			for (int i = 0; i < references.Count; i++)
 			{
 				data.slots.Add(new SlotData(i, references[i]));
+			}
+
+			return data;
+		}
+
+		/// <summary>
+		/// 手動序列化為 JSON（照抄 EquipmentSkinSystem 的做法）
+		/// </summary>
+		public string ToJson()
+		{
+			var sb = new System.Text.StringBuilder();
+			sb.AppendLine("{");
+			sb.AppendLine($"    \"slotCount\": {slotCount},");
+			sb.AppendLine("    \"slots\": [");
+
+			for (int i = 0; i < slots.Count; i++)
+			{
+				var slot = slots[i];
+				sb.AppendLine("        {");
+				sb.AppendLine($"            \"slotIndex\": {slot.slotIndex},");
+				sb.AppendLine($"            \"typeID\": {slot.typeID},");
+				sb.AppendLine($"            \"slotKey\": \"{slot.slotKey}\",");
+				sb.AppendLine($"            \"backpackIndex\": {slot.backpackIndex}");
+				sb.Append("        }");
+				if (i < slots.Count - 1)
+				{
+					sb.AppendLine(",");
+				}
+				else
+				{
+					sb.AppendLine();
+				}
+			}
+
+			sb.AppendLine("    ]");
+			sb.Append("}");
+
+			return sb.ToString();
+		}
+
+		/// <summary>
+		/// 從 JSON 手動解析（照抄 EquipmentSkinSystem 的做法）
+		/// </summary>
+		public static RadialMenuData FromJson(string json)
+		{
+			RadialMenuData data = new RadialMenuData();
+
+			try
+			{
+				// 提取 slotCount
+				var countMatch = System.Text.RegularExpressions.Regex.Match(json, @"""slotCount"":\s*(\d+)");
+				if (countMatch.Success)
+				{
+					data.slotCount = int.Parse(countMatch.Groups[1].Value);
+				}
+
+				// 提取 slots 陣列
+				var slotsMatch = System.Text.RegularExpressions.Regex.Match(json, @"""slots"":\s*\[(.*?)\]", System.Text.RegularExpressions.RegexOptions.Singleline);
+				if (slotsMatch.Success)
+				{
+					string slotsJson = slotsMatch.Groups[1].Value;
+					var slotMatches = System.Text.RegularExpressions.Regex.Matches(slotsJson, @"\{[^}]+\}");
+
+					foreach (System.Text.RegularExpressions.Match slotMatch in slotMatches)
+					{
+						string slotJson = slotMatch.Value;
+
+						var slotIndexMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""slotIndex"":\s*(\d+)");
+						var typeIDMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""typeID"":\s*(-?\d+)");
+						var slotKeyMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""slotKey"":\s*""([^""]*)""");
+						var backpackIndexMatch = System.Text.RegularExpressions.Regex.Match(slotJson, @"""backpackIndex"":\s*(-?\d+)");
+
+						if (slotIndexMatch.Success && typeIDMatch.Success && slotKeyMatch.Success && backpackIndexMatch.Success)
+						{
+							var slotData = new SlotData
+							{
+								slotIndex = int.Parse(slotIndexMatch.Groups[1].Value),
+								typeID = int.Parse(typeIDMatch.Groups[1].Value),
+								slotKey = slotKeyMatch.Groups[1].Value,
+								backpackIndex = int.Parse(backpackIndexMatch.Groups[1].Value)
+							};
+							data.slots.Add(slotData);
+						}
+					}
+				}
+			}
+			catch (System.Exception e)
+			{
+				Debug.LogError($"[RadialMenuData] 解析 JSON 失敗: {e.Message}");
 			}
 
 			return data;
