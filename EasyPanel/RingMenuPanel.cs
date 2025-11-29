@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using ItemStatsSystem;
 using Duckov;
+using Saves;
 
 namespace EasyPanel
 {
@@ -49,29 +50,30 @@ namespace EasyPanel
 		settings = RingMenuSettings.Load();
 		Debug.Log($"[EasyPanel] 設定已載入，選取半徑: {settings.SelectionRadius}");
 
-		// 訂閱場景載入事件
-		UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+		// 訂閱 LevelManager 初始化完成事件
+		LevelManager.OnAfterLevelInitialized += OnLevelInitialized;
 	}
 
 	private void OnDestroy()
 	{
-		// 取消訂閱場景載入事件
-		UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+		// 取消訂閱事件
+		LevelManager.OnAfterLevelInitialized -= OnLevelInitialized;
 	}
 
 	/// <summary>
-	/// 場景載入時的回調
+	/// 場景完全初始化後的回調
+	/// 在此時載入配置,確保角色、背包、裝備都已準備好
 	/// </summary>
-	private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+	private void OnLevelInitialized()
 	{
-		Debug.Log($"[EasyPanel] 場景已載入: {scene.name}，重新載入格子配置");
+		Debug.Log("[EasyPanel] LevelManager 初始化完成，開始載入格子配置");
 
-		// 場景切換後重新載入配置
+		// 場景初始化後重新載入配置
 		if (configLoaded && slots != null && slots.Count > 0)
 		{
 			LoadSlotConfiguration();
 			RefreshAllSlots();
-			Debug.Log("[EasyPanel] 場景切換後配置已重新載入");
+			Debug.Log("[EasyPanel] 格子配置已重新載入");
 		}
 	}
 
@@ -435,45 +437,32 @@ namespace EasyPanel
 	}
 
 	/// <summary>
-	/// 保存格子配置
+	/// 保存格子配置 - 使用 ES3 SavesSystem
 	/// </summary>
 	private void SaveSlotConfiguration()
 	{
 		try
 		{
-			SlotConfig[] configs = new SlotConfig[slots.Count];
-			int savedCount = 0;
+			List<ItemReference> references = new List<ItemReference>();
 
 			for (int i = 0; i < slots.Count; i++)
 			{
-				// 直接使用存儲的 TypeID，而不是從 item instance 獲取
-				int typeID = slots[i].GetStoredTypeID();
-				configs[i] = new SlotConfig
-				{
-					slotIndex = i,
-					itemTypeID = typeID > 0 ? typeID.ToString() : ""
-				};
+				ItemReference reference = slots[i].GetItemReference();
+				references.Add(reference);
 
-				if (typeID > 0)
+				if (!reference.IsEmpty)
 				{
-					savedCount++;
-					Debug.Log($"[EasyPanel] 保存格子 {i}: TypeID = {typeID}");
+					Debug.Log($"[EasyPanel] 保存格子 {i}: {reference}");
 				}
 			}
 
-			SlotConfigsList configsList = new SlotConfigsList { configs = configs };
-			string json = JsonUtility.ToJson(configsList);
+			RadialMenuData data = RadialMenuData.FromSlotReferences(references);
 
-			Debug.Log($"[EasyPanel] 序列化 JSON: {json}");
+			// 使用 SavesSystem 保存到遊戲存檔
+			SavesSystem.Save("EasyPanel/RadialMenu", data);
 
-			PlayerPrefs.SetString("EasyPanel_SlotConfigs", json);
-			PlayerPrefs.Save();
-
-			Debug.Log($"[EasyPanel] ✓ 格子配置已保存到 PlayerPrefs，共 {savedCount}/{configs.Length} 個有效配置");
-
-			// 驗證保存
-			string savedJson = PlayerPrefs.GetString("EasyPanel_SlotConfigs", "");
-			Debug.Log($"[EasyPanel] 驗證保存的數據: {savedJson}");
+			int nonEmpty = data.GetNonEmptySlotCount();
+			Debug.Log($"[EasyPanel] ✓ 格子配置已保存到遊戲存檔，共 {nonEmpty}/{data.slotCount} 個有效配置");
 		}
 		catch (System.Exception e)
 		{
@@ -482,77 +471,47 @@ namespace EasyPanel
 	}
 
 	/// <summary>
-	/// 載入格子配置
+	/// 載入格子配置 - 使用 ES3 SavesSystem
 	/// </summary>
 	private void LoadSlotConfiguration()
 	{
 		Debug.Log("[EasyPanel] 開始載入格子配置...");
 
-		if (!PlayerPrefs.HasKey("EasyPanel_SlotConfigs"))
-		{
-			Debug.Log("[EasyPanel] PlayerPrefs 中無保存的格子配置 (Key: EasyPanel_SlotConfigs)");
-			return;
-		}
-
 		try
 		{
-			string json = PlayerPrefs.GetString("EasyPanel_SlotConfigs");
-			Debug.Log($"[EasyPanel] 從 PlayerPrefs 讀取的 JSON: {json}");
+			// 從 SavesSystem 載入
+			RadialMenuData data = SavesSystem.Load<RadialMenuData>("EasyPanel/RadialMenu");
 
-			if (string.IsNullOrEmpty(json))
+			if (data == null)
 			{
-				Debug.LogWarning("[EasyPanel] 讀取到的 JSON 為空");
+				Debug.Log("[EasyPanel] 未找到保存的配置");
 				return;
 			}
 
-			SlotConfigsList configsList = JsonUtility.FromJson<SlotConfigsList>(json);
-
-			if (configsList == null)
+			if (!data.Validate())
 			{
-				Debug.LogWarning("[EasyPanel] JSON 反序列化後 configsList 為 null");
+				Debug.LogWarning("[EasyPanel] 載入的配置驗證失敗");
 				return;
 			}
 
-			if (configsList.configs == null)
-			{
-				Debug.LogWarning("[EasyPanel] configsList.configs 為 null");
-				return;
-			}
+			Debug.Log($"[EasyPanel] 成功載入配置: {data}");
 
-			Debug.Log($"[EasyPanel] 配置列表長度: {configsList.configs.Length}");
+			List<ItemReference> references = data.ToSlotReferences();
 
 			int loadedCount = 0;
-			foreach (var config in configsList.configs)
+			for (int i = 0; i < references.Count && i < slots.Count; i++)
 			{
-				if (config == null)
-				{
-					Debug.LogWarning("[EasyPanel] 配置項為 null，跳過");
-					continue;
-				}
+				ItemReference reference = references[i];
 
-				Debug.Log($"[EasyPanel] 處理配置: 格子 {config.slotIndex}, TypeID: '{config.itemTypeID}'");
-
-				if (config.slotIndex >= 0 && config.slotIndex < slots.Count && !string.IsNullOrEmpty(config.itemTypeID))
+				if (!reference.IsEmpty)
 				{
-					if (int.TryParse(config.itemTypeID, out int typeID) && typeID > 0)
-					{
-						// 通過 TypeID 設置物品（會自動從背包中查找）
-						slots[config.slotIndex].SetItemByTypeID(typeID);
-						loadedCount++;
-						Debug.Log($"[EasyPanel] ✓ 格子 {config.slotIndex} 載入物品 TypeID: {typeID}");
-					}
-					else
-					{
-						Debug.LogWarning($"[EasyPanel] 無法解析 TypeID: '{config.itemTypeID}'");
-					}
-				}
-				else
-				{
-					Debug.Log($"[EasyPanel] 跳過配置: slotIndex={config.slotIndex}, itemTypeID='{config.itemTypeID}'");
+					slots[i].SetItemReference(reference);
+					loadedCount++;
+					Debug.Log($"[EasyPanel] ✓ 格子 {i} 載入: {reference}");
 				}
 			}
 
-			Debug.Log($"[EasyPanel] ✓ 格子配置載入完成，共載入 {loadedCount}/{configsList.configs.Length} 個配置");
+			Debug.Log($"[EasyPanel] ✓ 格子配置載入完成，共載入 {loadedCount}/{references.Count} 個配置");
 		}
 		catch (System.Exception e)
 		{
@@ -579,23 +538,5 @@ namespace EasyPanel
 		}
 	}
 
-	/// <summary>
-	/// 格子配置數據結構
-	/// </summary>
-	[System.Serializable]
-	public class SlotConfig
-	{
-		public int slotIndex;
-		public string itemTypeID;
-	}
-
-	/// <summary>
-	/// 格子配置列表（用於 JSON 序列化）
-	/// </summary>
-	[System.Serializable]
-	public class SlotConfigsList
-	{
-		public SlotConfig[] configs;
-	}
 	}
 }
