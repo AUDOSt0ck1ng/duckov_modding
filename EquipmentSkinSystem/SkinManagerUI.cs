@@ -56,6 +56,11 @@ namespace EquipmentSkinSystem
         private RawImage? _previewImage;
         private Slider? _previewHeightSlider;
 
+        // 快捷鍵設定
+        private bool _isListeningForHotkey = false;
+        private TextMeshProUGUI? _hotkeyButtonText;
+        private Button? _hotkeyButton;
+
         private class SlotUIElements
         {
             public GameObject Container = null!;
@@ -1967,6 +1972,12 @@ namespace EquipmentSkinSystem
             CreateLogToggle(contentObj.transform, Localization.Get("Log_Warning", "警告日誌 (Warning)"), "EnableWarningLog", "Log_Warning");
             CreateLogToggle(contentObj.transform, Localization.Get("Log_Error", "錯誤日誌 (Error)"), "EnableErrorLog", "Log_Error");
 
+            // 間隔
+            CreateSpacer(contentObj.transform, 20);
+
+            // 創建快捷鍵設定
+            CreateHotkeySelector(contentObj.transform);
+
             return contentObj;
         }
 
@@ -2047,6 +2058,12 @@ namespace EquipmentSkinSystem
                         string currentLang = Localization.GetCurrentLanguage();
                         string currentLangName = Localization.GetLanguageDisplayName(currentLang);
                         kvp.Value.text = currentLangName;
+                    }
+                    // 特殊處理快捷鍵顯示
+                    else if (kvp.Key == "Hotkey_Current_Display")
+                    {
+                        KeyCode currentKey = EquipmentSkinDataManager.Instance.AppSettings.GetToggleUIKey();
+                        kvp.Value.text = $"{Localization.Get("Hotkey_Current", "當前設定")}: {currentKey}";
                     }
                     else if (kvp.Key.StartsWith("UI_Clear_"))
                     {
@@ -2299,6 +2316,89 @@ namespace EquipmentSkinSystem
             }
         }
 
+        private void CreateSpacer(Transform parent, float height)
+        {
+            GameObject spacer = new GameObject("Spacer");
+            spacer.transform.SetParent(parent, false);
+            RectTransform spacerRect = spacer.AddComponent<RectTransform>();
+            spacerRect.sizeDelta = new Vector2(0, height);
+        }
+
+        private void CreateHotkeySelector(Transform parent)
+        {
+            // 容器
+            GameObject container = new GameObject("HotkeySelector");
+            container.transform.SetParent(parent, false);
+
+            RectTransform containerRect = container.AddComponent<RectTransform>();
+            containerRect.sizeDelta = new Vector2(0, 100);
+
+            VerticalLayoutGroup containerLayout = container.AddComponent<VerticalLayoutGroup>();
+            containerLayout.spacing = 10;
+            containerLayout.padding = new RectOffset(0, 0, 0, 0);
+            containerLayout.childControlHeight = false;
+            containerLayout.childControlWidth = true;
+            containerLayout.childForceExpandHeight = false;
+            containerLayout.childForceExpandWidth = true;
+
+            // 標題
+            TextMeshProUGUI titleText = CreateText(container.transform, Localization.Get("Hotkey_ToggleUI", "開啟 UI 快捷鍵"), 0);
+            titleText.fontSize = 18;
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.alignment = TextAlignmentOptions.Center;
+            titleText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 30);
+            _localizedTexts["Hotkey_ToggleUI"] = titleText;
+
+            // 當前快捷鍵顯示
+            KeyCode currentKey = EquipmentSkinDataManager.Instance.AppSettings.GetToggleUIKey();
+            TextMeshProUGUI currentText = CreateText(container.transform,
+                $"{Localization.Get("Hotkey_Current", "當前設定")}: {currentKey}", 0);
+            currentText.fontSize = 16;
+            currentText.alignment = TextAlignmentOptions.Center;
+            currentText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 25);
+            _localizedTexts["Hotkey_Current_Display"] = currentText;
+
+            // 設定按鈕
+            GameObject buttonContainer = new GameObject("ButtonContainer");
+            buttonContainer.transform.SetParent(container.transform, false);
+            RectTransform buttonContainerRect = buttonContainer.AddComponent<RectTransform>();
+            buttonContainerRect.sizeDelta = new Vector2(0, 40);
+
+            _hotkeyButton = CreateButton(buttonContainer.transform,
+                Localization.Get("Hotkey_Set", "設定快捷鍵"),
+                StartListeningForHotkey);
+
+            // 調整按鈕大小
+            RectTransform hotkeyButtonRect = _hotkeyButton.GetComponent<RectTransform>();
+            hotkeyButtonRect.sizeDelta = new Vector2(200, 40);
+            hotkeyButtonRect.anchoredPosition = Vector2.zero;
+
+            _hotkeyButtonText = _hotkeyButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (_hotkeyButtonText != null)
+            {
+                _localizedTexts["Hotkey_Set"] = _hotkeyButtonText;
+            }
+
+            // 提示文字
+            TextMeshProUGUI hintText = CreateText(container.transform,
+                Localization.Get("Hotkey_Hint", "點擊按鈕後按下任意鍵來設定快捷鍵"), 0);
+            hintText.fontSize = 14;
+            hintText.alignment = TextAlignmentOptions.Center;
+            hintText.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+            hintText.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 20);
+            _localizedTexts["Hotkey_Hint"] = hintText;
+        }
+
+        private void StartListeningForHotkey()
+        {
+            _isListeningForHotkey = true;
+            if (_hotkeyButtonText != null)
+            {
+                _hotkeyButtonText.text = Localization.Get("Hotkey_Listening", "請按下快捷鍵...");
+            }
+            Logger.Info("Started listening for hotkey input");
+        }
+
         private void ToggleSettingsPanel()
         {
             if (_settingsPanel != null && _backgroundPanel != null)
@@ -2348,6 +2448,13 @@ namespace EquipmentSkinSystem
 
         void Update()
         {
+            // 快捷鍵偵測（最高優先級）
+            if (_isListeningForHotkey)
+            {
+                DetectHotkeyInput();
+                return; // 偵測中時不處理其他輸入
+            }
+
             // 當 UI 開啟時，監聽 ESC 鍵關閉
             if (_isUIVisible && Input.GetKeyDown(KeyCode.Escape))
             {
@@ -2359,6 +2466,51 @@ namespace EquipmentSkinSystem
             {
                 UpdateCurrentEquipmentDisplay();
                 _lastUpdateTime = Time.time;
+            }
+        }
+
+        private void DetectHotkeyInput()
+        {
+            // 檢測任何按鍵
+            foreach (KeyCode keyCode in System.Enum.GetValues(typeof(KeyCode)))
+            {
+                if (Input.GetKeyDown(keyCode))
+                {
+                    // 排除滑鼠按鍵（可選，避免使用者不小心設定滑鼠按鍵）
+                    if (keyCode >= KeyCode.Mouse0 && keyCode <= KeyCode.Mouse6)
+                    {
+                        continue;
+                    }
+
+                    // 設定新快捷鍵
+                    var settings = EquipmentSkinDataManager.Instance.AppSettings;
+                    settings.SetToggleUIKey(keyCode);
+                    DataPersistence.SaveConfig();
+
+                    // 更新顯示
+                    UpdateHotkeyDisplay();
+
+                    // 停止偵測
+                    _isListeningForHotkey = false;
+                    if (_hotkeyButtonText != null)
+                    {
+                        _hotkeyButtonText.text = Localization.Get("Hotkey_Set", "設定快捷鍵");
+                    }
+
+                    Logger.Info($"Hotkey changed to: {keyCode}");
+                    break;
+                }
+            }
+        }
+
+        private void UpdateHotkeyDisplay()
+        {
+            KeyCode currentKey = EquipmentSkinDataManager.Instance.AppSettings.GetToggleUIKey();
+
+            // 更新當前快捷鍵顯示
+            if (_localizedTexts.TryGetValue("Hotkey_Current_Display", out var displayText))
+            {
+                displayText.text = $"{Localization.Get("Hotkey_Current", "當前設定")}: {currentKey}";
             }
         }
 

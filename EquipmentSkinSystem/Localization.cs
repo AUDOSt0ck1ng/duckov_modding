@@ -218,6 +218,13 @@ namespace EquipmentSkinSystem
                 ["Log_Warning"] = "警告日誌 (Warning)",
                 ["Log_Error"] = "錯誤日誌 (Error)",
 
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "開啟 UI 快捷鍵",
+                ["Hotkey_Current"] = "當前設定",
+                ["Hotkey_Hint"] = "點擊按鈕後按下任意鍵來設定快捷鍵",
+                ["Hotkey_Listening"] = "請按下快捷鍵...",
+                ["Hotkey_Set"] = "設定快捷鍵",
+
                 // 語言設定
                 ["Language_Select"] = "當前語言",
                 ["Language_TraditionalChinese"] = "繁體中文",
@@ -270,6 +277,13 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "信息日志 (Info)",
                 ["Log_Warning"] = "警告日志 (Warning)",
                 ["Log_Error"] = "错误日志 (Error)",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "打开 UI 快捷键",
+                ["Hotkey_Current"] = "当前设置",
+                ["Hotkey_Hint"] = "点击按钮后按下任意键来设置快捷键",
+                ["Hotkey_Listening"] = "请按下快捷键...",
+                ["Hotkey_Set"] = "设置快捷键",
 
                 // 語言設定
                 ["Language_Select"] = "当前语言",
@@ -324,6 +338,13 @@ namespace EquipmentSkinSystem
                 ["Log_Warning"] = "Warning Log",
                 ["Log_Error"] = "Error Log",
 
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "Toggle UI Hotkey",
+                ["Hotkey_Current"] = "Current Setting",
+                ["Hotkey_Hint"] = "Click button then press any key to set hotkey",
+                ["Hotkey_Listening"] = "Press a key...",
+                ["Hotkey_Set"] = "Set Hotkey",
+
                 // 語言設定
                 ["Language_Select"] = "Current Language",
                 ["Language_TraditionalChinese"] = "Traditional Chinese",
@@ -366,6 +387,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "Journal d'Information",
                 ["Log_Warning"] = "Journal d'Avertissement",
                 ["Log_Error"] = "Journal d'Erreur",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "Raccourci Clavier UI",
+                ["Hotkey_Current"] = "Paramètre Actuel",
+                ["Hotkey_Hint"] = "Cliquez sur le bouton puis appuyez sur n'importe quelle touche",
+                ["Hotkey_Listening"] = "Appuyez sur une touche...",
+                ["Hotkey_Set"] = "Définir Raccourci",
+
                 ["Language_Select"] = "Langue Actuelle",
                 ["Language_TraditionalChinese"] = "Chinois Traditionnel",
                 ["Language_English"] = "Anglais",
@@ -407,6 +436,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "Info-Protokoll",
                 ["Log_Warning"] = "Warnungs-Protokoll",
                 ["Log_Error"] = "Fehler-Protokoll",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "UI-Tastenkombination",
+                ["Hotkey_Current"] = "Aktuelle Einstellung",
+                ["Hotkey_Hint"] = "Klicken Sie auf die Schaltfläche und drücken Sie dann eine beliebige Taste",
+                ["Hotkey_Listening"] = "Drücken Sie eine Taste...",
+                ["Hotkey_Set"] = "Taste Festlegen",
+
                 ["Language_Select"] = "Aktuelle Sprache",
                 ["Language_TraditionalChinese"] = "Traditionelles Chinesisch",
                 ["Language_English"] = "Englisch",
@@ -448,6 +485,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "情報ログ",
                 ["Log_Warning"] = "警告ログ",
                 ["Log_Error"] = "エラーログ",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "UIホットキー",
+                ["Hotkey_Current"] = "現在の設定",
+                ["Hotkey_Hint"] = "ボタンをクリックしてからキーを押してください",
+                ["Hotkey_Listening"] = "キーを押してください...",
+                ["Hotkey_Set"] = "ホットキー設定",
+
                 ["Language_Select"] = "現在の言語",
                 ["Language_TraditionalChinese"] = "繁体中国語",
                 ["Language_English"] = "英語",
@@ -489,6 +534,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "정보 로그",
                 ["Log_Warning"] = "경고 로그",
                 ["Log_Error"] = "오류 로그",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "UI 단축키",
+                ["Hotkey_Current"] = "현재 설정",
+                ["Hotkey_Hint"] = "버튼을 클릭한 후 키를 누르세요",
+                ["Hotkey_Listening"] = "키를 눌러주세요...",
+                ["Hotkey_Set"] = "단축키 설정",
+
                 ["Language_Select"] = "현재 언어",
                 ["Language_TraditionalChinese"] = "번체 중국어",
                 ["Language_English"] = "영어",
@@ -530,6 +583,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "Log de Informação",
                 ["Log_Warning"] = "Log de Aviso",
                 ["Log_Error"] = "Log de Erro",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "Tecla de Atalho da UI",
+                ["Hotkey_Current"] = "Configuração Atual",
+                ["Hotkey_Hint"] = "Clique no botão e pressione qualquer tecla",
+                ["Hotkey_Listening"] = "Pressione uma tecla...",
+                ["Hotkey_Set"] = "Definir Tecla",
+
                 ["Language_Select"] = "Idioma Atual",
                 ["Language_TraditionalChinese"] = "Chinês Tradicional",
                 ["Language_English"] = "Inglês",
@@ -571,6 +632,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "Информационный Лог",
                 ["Log_Warning"] = "Лог Предупреждений",
                 ["Log_Error"] = "Лог Ошибок",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "Горячая Клавиша UI",
+                ["Hotkey_Current"] = "Текущая Настройка",
+                ["Hotkey_Hint"] = "Нажмите кнопку, затем нажмите любую клавишу",
+                ["Hotkey_Listening"] = "Нажмите клавишу...",
+                ["Hotkey_Set"] = "Установить Клавишу",
+
                 ["Language_Select"] = "Текущий Язык",
                 ["Language_TraditionalChinese"] = "Традиционный Китайский",
                 ["Language_English"] = "Английский",
@@ -612,6 +681,14 @@ namespace EquipmentSkinSystem
                 ["Log_Info"] = "Registro de Información",
                 ["Log_Warning"] = "Registro de Advertencias",
                 ["Log_Error"] = "Registro de Errores",
+
+                // 快捷鍵設定
+                ["Hotkey_ToggleUI"] = "Atajo de Teclado UI",
+                ["Hotkey_Current"] = "Configuración Actual",
+                ["Hotkey_Hint"] = "Haga clic en el botón y luego presione cualquier tecla",
+                ["Hotkey_Listening"] = "Presione una tecla...",
+                ["Hotkey_Set"] = "Establecer Atajo",
+
                 ["Language_Select"] = "Idioma Actual",
                 ["Language_TraditionalChinese"] = "Chino Tradicional",
                 ["Language_English"] = "Inglés",

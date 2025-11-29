@@ -57,7 +57,8 @@ namespace EquipmentSkinSystem
                 SceneManager.sceneLoaded += OnSceneLoaded;
 
                 Logger.Info("Initialization completed successfully!");
-                Logger.Info("Press F7 to open UI (UI will be created on first use)");
+                KeyCode toggleKey = EquipmentSkinDataManager.Instance.AppSettings.GetToggleUIKey();
+                Logger.Info($"Press {toggleKey} to open UI (UI will be created on first use)");
                 Logger.Info($"Config file location: {Path.Combine(Application.persistentDataPath, "EquipmentSkinSystem", "skin_config.json")}");
             }
             catch (Exception e)
@@ -130,8 +131,9 @@ namespace EquipmentSkinSystem
 
         void Update()
         {
-            // 按 F7 鍵切換 UI
-            if (Input.GetKeyDown(KeyCode.F7))
+            // 使用設定檔中的快捷鍵切換 UI
+            KeyCode toggleKey = EquipmentSkinDataManager.Instance.AppSettings.GetToggleUIKey();
+            if (Input.GetKeyDown(toggleKey))
             {
                 ToggleUI();
             }

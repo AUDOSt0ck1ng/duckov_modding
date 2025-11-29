@@ -173,9 +173,28 @@ namespace EquipmentSkinSystem
         // 語系設定（未來擴展用）
         public string Language = "zh-TW";  // 預設繁體中文
 
+        // UI 快捷鍵設定（使用 KeyCode 的整數值）
+        public int ToggleUIKeyCode = 288;  // 288 = KeyCode.F7 預設值
+
         public AppSettings()
         {
             // 預設值已在欄位初始化中設定
+        }
+
+        /// <summary>
+        /// 取得 KeyCode（從整數轉換）
+        /// </summary>
+        public KeyCode GetToggleUIKey()
+        {
+            return (KeyCode)ToggleUIKeyCode;
+        }
+
+        /// <summary>
+        /// 設定 KeyCode（轉換為整數儲存）
+        /// </summary>
+        public void SetToggleUIKey(KeyCode keyCode)
+        {
+            ToggleUIKeyCode = (int)keyCode;
         }
     }
 
@@ -312,7 +331,8 @@ namespace EquipmentSkinSystem
             sb.AppendLine($"{indent}    \"EnableInfoLog\": {settings.EnableInfoLog.ToString().ToLower()},");
             sb.AppendLine($"{indent}    \"EnableWarningLog\": {settings.EnableWarningLog.ToString().ToLower()},");
             sb.AppendLine($"{indent}    \"EnableErrorLog\": {settings.EnableErrorLog.ToString().ToLower()},");
-            sb.AppendLine($"{indent}    \"Language\": \"{settings.Language}\"");
+            sb.AppendLine($"{indent}    \"Language\": \"{settings.Language}\",");
+            sb.AppendLine($"{indent}    \"ToggleUIKeyCode\": {settings.ToggleUIKeyCode}");
             sb.Append($"{indent}}}");
             return sb.ToString();
         }
@@ -447,7 +467,13 @@ namespace EquipmentSkinSystem
                     settings.Language = languageMatch.Groups[1].Value;
                 }
 
-                Logger.Debug($"Parsed AppSettings: Debug={settings.EnableDebugLog}, Info={settings.EnableInfoLog}, Warning={settings.EnableWarningLog}, Error={settings.EnableErrorLog}, Language={settings.Language}");
+                var keyCodeMatch = System.Text.RegularExpressions.Regex.Match(json, @"""ToggleUIKeyCode"":\s*(\d+)");
+                if (keyCodeMatch.Success)
+                {
+                    settings.ToggleUIKeyCode = int.Parse(keyCodeMatch.Groups[1].Value);
+                }
+
+                Logger.Debug($"Parsed AppSettings: Debug={settings.EnableDebugLog}, Info={settings.EnableInfoLog}, Warning={settings.EnableWarningLog}, Error={settings.EnableErrorLog}, Language={settings.Language}, ToggleUIKey={settings.GetToggleUIKey()}");
             }
             catch (Exception e)
             {
