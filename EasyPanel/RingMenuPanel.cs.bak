@@ -1,0 +1,436 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using ItemStatsSystem;
+using Duckov;
+
+namespace EasyPanel
+{
+	/// <summary>
+	/// 環形面板主控制器
+	/// 按下快捷鍵後顯示環形選單，供玩家快速選擇道具或裝備
+	/// </summary>
+	public class RingMenuPanel : UIPanel
+	{
+		[Header("環形面板設置")]
+		[SerializeField]
+		[Tooltip("環形選項預製件")]
+		private RingMenuItem menuItemPrefab;
+
+		[SerializeField]
+		[Tooltip("環形選項的父容器")]
+		private Transform menuItemsContainer;
+
+		[SerializeField]
+		[Tooltip("環的半徑")]
+		private float ringRadius = 200f;
+
+		[SerializeField]
+		[Tooltip("最大顯示的選項數量")]
+		private int maxItems = 8;
+
+		[SerializeField]
+		[Tooltip("選中時的高亮圖片")]
+		private Image highlightImage;
+
+		[SerializeField]
+		[Tooltip("中心提示文字")]
+		private Text centerHintText;
+
+		private List<RingMenuItem> menuItems = new List<RingMenuItem>();
+		private int currentSelectedIndex = -1;
+		private bool isOpen = false;
+
+		// 單例模式
+		private static RingMenuPanel instance;
+		public static RingMenuPanel Instance => instance;
+
+		private void Awake()
+		{
+			if (instance == null)
+			{
+				instance = this;
+			}
+			else
+			{
+				Destroy(gameObject);
+				return;
+			}
+		}
+
+		/// <summary>
+		/// 初始化 UI（運行時創建）
+		/// </summary>
+		public void InitializeUI()
+		{
+			// 創建容器
+			GameObject container = new GameObject("MenuItemsContainer");
+			container.transform.SetParent(transform, false);
+
+			var containerRect = container.AddComponent<RectTransform>();
+			containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+			containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+			containerRect.pivot = new Vector2(0.5f, 0.5f);
+			containerRect.anchoredPosition = Vector2.zero;
+			containerRect.sizeDelta = new Vector2(ringRadius * 3, ringRadius * 3);
+
+			menuItemsContainer = container.transform;
+
+			// 創建中心提示文字
+			GameObject centerTextObj = new GameObject("CenterHint");
+			centerTextObj.transform.SetParent(transform, false);
+
+			var centerTextRect = centerTextObj.AddComponent<RectTransform>();
+			centerTextRect.anchorMin = new Vector2(0.5f, 0.5f);
+			centerTextRect.anchorMax = new Vector2(0.5f, 0.5f);
+			centerTextRect.pivot = new Vector2(0.5f, 0.5f);
+			centerTextRect.anchoredPosition = Vector2.zero;
+			centerTextRect.sizeDelta = new Vector2(300, 100);
+
+			centerHintText = centerTextObj.AddComponent<Text>();
+			centerHintText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+			centerHintText.fontSize = 24;
+			centerHintText.alignment = TextAnchor.MiddleCenter;
+			centerHintText.color = Color.white;
+
+			// 初始化時隱藏
+			gameObject.SetActive(false);
+
+			Debug.Log("[EasyPanel] UI 已初始化");
+		}
+
+		/// <summary>
+		/// 顯示環形面板
+		/// </summary>
+		public static void Show()
+		{
+			if (instance != null && !instance.isOpen)
+			{
+				instance.ShowPanel();
+			}
+		}
+
+		/// <summary>
+		/// 隱藏環形面板
+		/// </summary>
+		public static void Hide()
+		{
+			if (instance != null && instance.isOpen)
+			{
+				instance.HidePanel();
+			}
+		}
+
+		/// <summary>
+		/// 確認選擇當前項目
+		/// </summary>
+		public static void ConfirmSelection()
+		{
+			if (instance != null && instance.isOpen)
+			{
+				instance.UseSelectedItem();
+			}
+		}
+
+		/// <summary>
+		/// 根據鼠標位置更新選擇
+		/// </summary>
+		public void UpdateSelectionByMouse(Vector2 mousePosition)
+		{
+			if (!isOpen || menuItems.Count == 0)
+			{
+				return;
+			}
+
+			// 將鼠標位置轉換為相對於面板中心的向量
+			RectTransform rectTransform = GetComponent<RectTransform>();
+			if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+				rectTransform,
+				mousePosition,
+				null,
+				out Vector2 localPoint))
+			{
+				// 計算角度
+				float angle = Mathf.Atan2(localPoint.y, localPoint.x) * Mathf.Rad2Deg;
+				// 轉換為 0-360 度
+				if (angle < 0)
+				{
+					angle += 360f;
+				}
+
+				// 計算應該選擇哪個項目
+				float anglePerItem = 360f / menuItems.Count;
+				int newIndex = Mathf.FloorToInt((angle + anglePerItem / 2f) / anglePerItem) % menuItems.Count;
+
+				if (newIndex != currentSelectedIndex)
+				{
+					SelectItem(newIndex);
+				}
+			}
+		}
+
+		protected override void OnOpen()
+		{
+			base.OnOpen();
+			RefreshMenuItems();
+			isOpen = true;
+
+			// 暫停遊戲輸入
+			InputManager.DisableInput(gameObject);
+
+			// 顯示鼠標
+			Cursor.visible = true;
+			Cursor.lockState = CursorLockMode.None;
+		}
+
+		protected override void OnClose()
+		{
+			base.OnClose();
+			isOpen = false;
+
+			// 恢復遊戲輸入
+			InputManager.ActiveInput(gameObject);
+		}
+
+		private void ShowPanel()
+		{
+			gameObject.SetActive(true);
+			OnOpen();
+		}
+
+		private void HidePanel()
+		{
+			Close();
+			gameObject.SetActive(false);
+		}
+
+		private void Update()
+		{
+			if (isOpen)
+			{
+				// 更新鼠標選擇
+				UpdateSelectionByMouse(UnityEngine.Input.mousePosition);
+			}
+		}
+
+		/// <summary>
+		/// 刷新環形選項，從快捷欄讀取道具
+		/// </summary>
+		private void RefreshMenuItems()
+		{
+			// 清除舊的選項
+			foreach (var item in menuItems)
+			{
+				if (item != null)
+				{
+					Destroy(item.gameObject);
+				}
+			}
+			menuItems.Clear();
+
+			// 從 ItemShortcut 獲取快捷欄道具
+			int itemCount = 0;
+			for (int i = 0; i < maxItems; i++)
+			{
+				Item shortcutItem = ItemShortcut.Get(i);
+				if (shortcutItem != null)
+				{
+					itemCount++;
+				}
+			}
+
+			if (itemCount == 0)
+			{
+				// 沒有道具時顯示提示
+				if (centerHintText != null)
+				{
+					centerHintText.text = "沒有可用的道具";
+				}
+				return;
+			}
+
+			// 創建環形選項
+			float angleStep = 360f / itemCount;
+			float currentAngle = 90f; // 從正上方開始
+
+			int createdIndex = 0;
+			for (int i = 0; i < maxItems; i++)
+			{
+				Item shortcutItem = ItemShortcut.Get(i);
+				if (shortcutItem == null)
+				{
+					continue;
+				}
+
+				// 創建選項（動態創建UI）
+				GameObject menuItemObj = CreateMenuItem(shortcutItem, i);
+				RingMenuItem menuItem = menuItemObj.GetComponent<RingMenuItem>();
+
+				// 計算位置（環形排列）
+				float radian = currentAngle * Mathf.Deg2Rad;
+				Vector2 position = new Vector2(
+					Mathf.Cos(radian) * ringRadius,
+					Mathf.Sin(radian) * ringRadius
+				);
+
+				RectTransform itemRect = menuItem.GetComponent<RectTransform>();
+				itemRect.anchoredPosition = position;
+
+				menuItems.Add(menuItem);
+
+				currentAngle -= angleStep;
+				createdIndex++;
+			}
+
+			// 默認選中第一個
+			if (menuItems.Count > 0)
+			{
+				SelectItem(0);
+			}
+		}
+
+		/// <summary>
+		/// 動態創建菜單項 UI
+		/// </summary>
+		private GameObject CreateMenuItem(Item item, int shortcutIndex)
+		{
+			// 創建主GameObject
+			GameObject menuItemObj = new GameObject($"MenuItem_{shortcutIndex}");
+			menuItemObj.transform.SetParent(menuItemsContainer, false);
+
+			// 添加 RectTransform
+			var rectTransform = menuItemObj.AddComponent<RectTransform>();
+			rectTransform.sizeDelta = new Vector2(80, 80);
+
+			// 添加背景
+			var bg = menuItemObj.AddComponent<Image>();
+			bg.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+
+			// 創建圖標
+			GameObject iconObj = new GameObject("Icon");
+			iconObj.transform.SetParent(menuItemObj.transform, false);
+
+			var iconRect = iconObj.AddComponent<RectTransform>();
+			iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+			iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+			iconRect.sizeDelta = new Vector2(60, 60);
+			iconRect.anchoredPosition = Vector2.zero;
+
+			var iconImage = iconObj.AddComponent<Image>();
+			if (item.Icon != null)
+			{
+				iconImage.sprite = item.Icon;
+			}
+
+			// 創建數量文字
+			if (item.Stackable && item.StackCount > 1)
+			{
+				GameObject countObj = new GameObject("Count");
+				countObj.transform.SetParent(menuItemObj.transform, false);
+
+				var countRect = countObj.AddComponent<RectTransform>();
+				countRect.anchorMin = new Vector2(1, 0);
+				countRect.anchorMax = new Vector2(1, 0);
+				countRect.pivot = new Vector2(1, 0);
+				countRect.sizeDelta = new Vector2(30, 20);
+				countRect.anchoredPosition = new Vector2(-5, 5);
+
+				var countText = countObj.AddComponent<Text>();
+				countText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+				countText.fontSize = 14;
+				countText.text = item.StackCount.ToString();
+				countText.alignment = TextAnchor.MiddleRight;
+				countText.color = Color.white;
+			}
+
+			// 添加 RingMenuItem 組件
+			var menuItem = menuItemObj.AddComponent<RingMenuItem>();
+			menuItem.InitializeDynamic(item, shortcutIndex, iconImage, bg);
+
+			return menuItemObj;
+		}
+
+		/// <summary>
+		/// 選擇指定索引的項目
+		/// </summary>
+		private void SelectItem(int index)
+		{
+			if (index < 0 || index >= menuItems.Count)
+			{
+				return;
+			}
+
+			// 取消之前的選中
+			if (currentSelectedIndex >= 0 && currentSelectedIndex < menuItems.Count)
+			{
+				menuItems[currentSelectedIndex].SetSelected(false);
+			}
+
+			// 選中新的項目
+			currentSelectedIndex = index;
+			menuItems[currentSelectedIndex].SetSelected(true);
+
+			// 更新中心提示
+			if (centerHintText != null)
+			{
+				Item selectedItem = menuItems[currentSelectedIndex].GetItem();
+				if (selectedItem != null)
+				{
+					centerHintText.text = selectedItem.GetString("LocalizedName", selectedItem.ToString());
+				}
+			}
+
+			// 播放音效
+			// TODO: 添加選擇音效
+		}
+
+		/// <summary>
+		/// 使用當前選中的道具
+		/// </summary>
+		private void UseSelectedItem()
+		{
+			if (currentSelectedIndex < 0 || currentSelectedIndex >= menuItems.Count)
+			{
+				return;
+			}
+
+			Item selectedItem = menuItems[currentSelectedIndex].GetItem();
+			if (selectedItem == null)
+			{
+				return;
+			}
+
+			// 獲取主角
+			CharacterMainControl mainCharacter = CharacterMainControl.Main;
+			if (mainCharacter == null)
+			{
+				Debug.LogWarning("RingMenuPanel: 找不到主角控制器");
+				return;
+			}
+
+			// 使用道具或切換裝備
+			if (selectedItem.UsageUtilities != null &&
+				selectedItem.UsageUtilities.IsUsable(selectedItem, mainCharacter))
+			{
+				// 可使用的道具（如藥水）
+				mainCharacter.UseItem(selectedItem);
+			}
+			else if (selectedItem.GetBool("IsSkill"))
+			{
+				// 技能
+				mainCharacter.ChangeHoldItem(selectedItem);
+			}
+			else if (selectedItem.HasHandHeldAgent)
+			{
+				// 手持道具（武器等）
+				mainCharacter.ChangeHoldItem(selectedItem);
+			}
+
+			// 播放使用音效
+			// TODO: 添加使用音效
+
+			// 關閉面板
+			Hide();
+		}
+	}
+}
