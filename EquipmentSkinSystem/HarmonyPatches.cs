@@ -28,29 +28,67 @@ namespace EquipmentSkinSystem
                 {
                     Logger.Debug("ChangeEquipmentModel Prefix triggered!");
 
-                    // 檢查是否為目標角色（玩家或狗）
+                    // ====================================================================
+                    // 關鍵修正：所有驗證檢查必須在任何操作（如清空 socket）之前完成
+                    // 如果不是目標場景/角色，直接返回 true，不做任何操作
+                    // ====================================================================
+
+                    // 檢查 1：場景類型（過場動畫場景不處理）
+                    if (!IsValidGameplayScene())
+                    {
+                        Logger.Debug("Not a valid gameplay scene (cutscene/transition detected), let game handle it");
+                        return true; // 直接讓遊戲處理，不做任何操作
+                    }
+
+                    // 檢查 2：是否為目標角色（玩家或狗）
                     CharacterType characterType;
                     if (!IsTargetCharacter(__instance, out characterType))
                     {
-                        Logger.Debug("Not target character, skip");
-                        return true;
+                        Logger.Debug("Not target character, let game handle it");
+                        return true; // 直接讓遊戲處理，不做任何操作
                     }
 
-                    Logger.Debug($"Target character: {characterType}");
-
-                    // 無效槽位，交由遊戲處理
-                    if (slot == null || socket == null)
+                    if (characterType == CharacterType.Pet)
                     {
-                        Logger.Debug("Invalid slot or socket, skip");
+                        Logger.Info($"🐕 Pet equipment change detected! Slot: {slot?.Key}");
+                    }
+                    Logger.Debug($"✓ Target character identified: {characterType}");
+
+                    // 檢查 3：槽位和 socket 有效性
+                    if (slot == null || socket == null || socket.gameObject == null)
+                    {
+                        Logger.Debug("Invalid slot or socket, let game handle it");
                         return true;
                     }
 
-                    Logger.Debug($"Processing slot: {slot.Key}, Content: {(slot.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
+                    // 檢查 4：Socket 是否在有效的 CharacterModel 下
+                    var cm = Traverse.Create(__instance).Field("characterMainControl").GetValue<CharacterMainControl>();
+                    if (cm == null || cm.characterModel == null)
+                    {
+                        Logger.Debug("CharacterModel is null, cannot verify socket validity, let game handle it");
+                        return true;
+                    }
 
-                    // 取得該槽位的外觀配置
+                    // 檢查 5：驗證 socket 確實屬於這個 characterModel
+                    if (!IsSocketValidForCharacterModel(socket, cm.characterModel))
+                    {
+                        Logger.Warning($"Socket '{socket.name}' is not valid for current CharacterModel, let game handle it (might be in cutscene)");
+                        return true;
+                    }
+
+                    // 檢查 6：是否為我們管理的槽位
                     var slotType = GetSlotTypeFromKey(slot.Key);
                     if (!slotType.HasValue)
+                    {
+                        Logger.Debug("Not a managed slot type, let game handle it");
                         return true; // 不是我們管理的槽位，執行原方法
+                    }
+
+                    // ====================================================================
+                    // 所有檢查通過，開始處理邏輯
+                    // ====================================================================
+
+                    Logger.Debug($"Processing slot: {slot.Key}, Content: {(slot.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
 
                     var config = GetSlotConfig(slotType.Value, characterType);
                     Logger.Debug($"[{characterType}] Slot {slotType.Value} config: UseSkin={config.UseSkin}, SkinID={config.SkinItemTypeID}");
@@ -59,12 +97,25 @@ namespace EquipmentSkinSystem
                     // 當其中任一槽位變更時（包括脫下），都應該重新渲染所有三個槽位
                     if (slotType.Value == EquipmentSlotType.Helmet || slotType.Value == EquipmentSlotType.Headset || slotType.Value == EquipmentSlotType.FaceMask)
                     {
-                        Logger.Debug($"[{characterType}] Helmet/headset/faceMask slot changed (Content: {slot.Content != null}), re-rendering all three slots");
-                        ClearEntireSocket(socket);
-                        RenderHelmetHeadsetFaceMaskSlots(__instance, socket, characterType, slot, slotType.Value);
+                        Logger.Debug($"[{characterType}] Helmet/headset/faceMask slot changed (Content: {slot.Content != null}), scheduling delayed render");
 
-                        // 每次渲染後，強制重新判斷頭髮/嘴巴
-                        ForceUpdateHairAndMouth(__instance, characterType);
+                        // 關鍵修復：延遲渲染到下一幀，避免在 Item.OnDestroy() 過程中操作 socket
+                        // 先清空 socket（這個是安全的）
+                        ClearEntireSocket(socket);
+
+                        // 使用 Coroutine 延遲渲染
+                        if (ModBehaviour.Instance != null)
+                        {
+                            ModBehaviour.Instance.StartCoroutine(DelayedRenderHelmetSlots(__instance, socket, characterType, slot, slotType.Value));
+                        }
+                        else
+                        {
+                            // 如果 ModBehaviour 不可用，直接渲染（風險較高但至少能工作）
+                            Logger.Warning("ModBehaviour.Instance is null, rendering immediately (might cause issues)");
+                            RenderHelmetHeadsetFaceMaskSlots(__instance, socket, characterType, slot, slotType.Value);
+                            ForceUpdateHairAndMouth(__instance, characterType);
+                        }
+
                         return false; // 完全接管，不讓遊戲處理
                     }
 
@@ -162,6 +213,108 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
+        /// 檢查是否為有效的遊戲場景（基地或副本地圖）
+        /// 過場動畫、過渡場景等會返回 false
+        /// </summary>
+        private static bool IsValidGameplayScene()
+        {
+            try
+            {
+                // 關鍵檢查 1：場景名稱（最直接的方式）
+                string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (!string.IsNullOrEmpty(currentSceneName))
+                {
+                    string sceneLower = currentSceneName.ToLower();
+
+                    // 排除已知的非遊戲場景
+                    if (sceneLower.Contains("loading") ||
+                        sceneLower.Contains("cutscene") ||
+                        sceneLower.Contains("menu") ||
+                        sceneLower.Contains("transition"))
+                    {
+                        Logger.Debug($"Scene check: '{currentSceneName}' is a non-gameplay scene, skipping equipment render");
+                        return false;
+                    }
+                }
+
+                // 關鍵檢查 2：是否有正在播放的過場動畫
+                var cutScene = UnityEngine.Object.FindFirstObjectByType<CutScene>();
+                if (cutScene != null)
+                {
+                    // 使用 Traverse 檢查 private 字段 playing
+                    bool isPlaying = Traverse.Create(cutScene).Field("playing").GetValue<bool>();
+                    if (isPlaying)
+                    {
+                        Logger.Debug("Scene check: CutScene is playing, skipping equipment render");
+                        return false;
+                    }
+                }
+
+                // 檢查是否有 LevelManager
+                if (LevelManager.Instance == null)
+                {
+                    Logger.Debug("Scene check: LevelManager.Instance is null, skipping equipment render");
+                    return false;
+                }
+
+                // 關鍵：必須是基地或副本地圖其中之一
+                bool isBaseLevel = LevelManager.Instance.IsBaseLevel;
+                bool isRaidMap = LevelManager.Instance.IsRaidMap;
+
+                // 保守策略：必須明確是基地或副本地圖，才允許渲染
+                // 如果兩個都是 false（過場動畫、載入畫面、或 LevelConfig 不存在），則不渲染
+                bool isValidGameplay = isBaseLevel || isRaidMap;
+
+                if (!isValidGameplay)
+                {
+                    Logger.Debug($"Scene check: Not a gameplay scene (IsBaseLevel={isBaseLevel}, IsRaidMap={isRaidMap}), skipping equipment render");
+                    return false;
+                }
+
+                Logger.Debug($"Scene check: Valid gameplay scene '{currentSceneName}' (IsBaseLevel={isBaseLevel}, IsRaidMap={isRaidMap}), allowing equipment render");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Error checking if valid gameplay scene", e);
+                return false; // 出錯時不渲染，讓遊戲處理
+            }
+        }
+
+        /// <summary>
+        /// 驗證 Socket 是否屬於給定的 CharacterModel
+        /// 防止在過場動畫中渲染到錯誤的 Socket 上
+        /// </summary>
+        private static bool IsSocketValidForCharacterModel(Transform socket, CharacterModel characterModel)
+        {
+            if (socket == null || characterModel == null)
+                return false;
+
+            try
+            {
+                // 檢查 socket 是否是 characterModel 的子物件
+                Transform current = socket;
+                while (current != null)
+                {
+                    if (current == characterModel.transform)
+                    {
+                        return true; // socket 是 characterModel 的子物件
+                    }
+                    current = current.parent;
+                }
+
+                // socket 不屬於這個 characterModel
+                Logger.Debug($"Socket '{socket.name}' is not a child of CharacterModel '{characterModel.name}'");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error validating socket", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 檢查是否為目標角色（玩家或狗）
         /// </summary>
         private static bool IsTargetCharacter(CharacterEquipmentController controller, out CharacterType characterType)
@@ -178,6 +331,13 @@ namespace EquipmentSkinSystem
                 if (cm == null)
                     return false;
 
+                // 檢查 CharacterModel 是否存在（過場動畫中可能沒有）
+                if (cm.characterModel == null)
+                {
+                    Logger.Debug("CharacterModel is null, skipping rendering (might be in cutscene or transitional scene)");
+                    return false;
+                }
+
                 // 檢查是否為玩家角色
                 var mainCharacter = LevelManager.Instance?.MainCharacter;
                 if (mainCharacter != null && cm == mainCharacter)
@@ -191,9 +351,11 @@ namespace EquipmentSkinSystem
                 if (petCharacter != null && cm == petCharacter)
                 {
                     characterType = CharacterType.Pet;
+                    Logger.Debug("Identified as Pet character");
                     return true;
                 }
 
+                Logger.Debug($"Not target character (not MainCharacter and not PetCharacter)");
                 return false; // 不是玩家也不是狗
             }
             catch (Exception ex)
@@ -217,14 +379,25 @@ namespace EquipmentSkinSystem
         /// </summary>
         private static void ClearEntireSocket(Transform socket)
         {
-            if (socket == null)
+            if (socket == null || socket.gameObject == null)
                 return;
 
-            for (int i = socket.childCount - 1; i >= 0; i--)
+            try
             {
-                GameObject.Destroy(socket.GetChild(i).gameObject);
+                for (int i = socket.childCount - 1; i >= 0; i--)
+                {
+                    var child = socket.GetChild(i);
+                    if (child != null && child.gameObject != null)
+                    {
+                        GameObject.Destroy(child.gameObject);
+                    }
+                }
+                Logger.Debug("Cleared entire socket");
             }
-            Logger.Debug("Cleared entire socket");
+            catch (System.Exception ex)
+            {
+                Logger.Warning($"Error while clearing socket: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -248,6 +421,40 @@ namespace EquipmentSkinSystem
 
             // 不啟用造型：渲染原裝
             return slot?.Content?.TypeID;
+        }
+
+        /// <summary>
+        /// 延遲渲染頭盔槽位（Coroutine）
+        /// 用於避免在 Item.OnDestroy() 過程中操作 socket
+        /// </summary>
+        private static System.Collections.IEnumerator DelayedRenderHelmetSlots(CharacterEquipmentController controller, Transform socket, CharacterType characterType, Slot currentSlot, EquipmentSlotType currentSlotType)
+        {
+            // 等待一幀，讓 OnDestroy() 完成
+            yield return null;
+
+            // 再次驗證 socket 和 controller 仍然有效
+            if (socket == null || IsGameObjectBeingDestroyed(socket.gameObject))
+            {
+                Logger.Warning("Socket was destroyed during delayed render, skipping");
+                yield break;
+            }
+
+            if (controller == null)
+            {
+                Logger.Warning("Controller was destroyed during delayed render, skipping");
+                yield break;
+            }
+
+            try
+            {
+                Logger.Debug($"[Delayed Render] Executing delayed render for {currentSlotType}");
+                RenderHelmetHeadsetFaceMaskSlots(controller, socket, characterType, currentSlot, currentSlotType);
+                ForceUpdateHairAndMouth(controller, characterType);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Error($"Error in delayed helmet render: {ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -449,6 +656,33 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
+        /// 檢查 GameObject 是否正在被銷毀或已被銷毀
+        /// Unity 的特殊機制：正在銷毀的物件 == null 可能返回 false
+        /// </summary>
+        private static bool IsGameObjectBeingDestroyed(GameObject obj)
+        {
+            if (obj == null)
+                return true;
+
+            try
+            {
+                // 嘗試訪問 name 屬性，如果物件正在被銷毀會拋出異常
+                var _ = obj.name;
+                // 檢查 activeInHierarchy - 如果父物件正在被銷毀，這個會返回 false
+                if (!obj.activeInHierarchy && obj.activeSelf)
+                {
+                    // 物件本身是 active 但在 hierarchy 中不是 active = 父物件可能被銷毀
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
         /// 渲染裝備（統一方法，根據 TypeID 渲染）
         /// </summary>
         /// <param name="itemTypeID">要渲染的物品 ID（外觀 ID）</param>
@@ -457,6 +691,13 @@ namespace EquipmentSkinSystem
         /// <param name="clearSocket">是否清空 socket（預設為 true，當多個裝備共用同一個 socket 時設為 false）</param>
         private static void RenderEquipment(int itemTypeID, Transform socket, Slot actualSlot = null, bool clearSocket = true)
         {
+            // 檢查 socket 是否有效且未被銷毀
+            if (socket == null || IsGameObjectBeingDestroyed(socket.gameObject))
+            {
+                Logger.Warning("Socket is null or being destroyed, cannot render equipment");
+                return;
+            }
+
             // 先清除 socket 上的現有物件（如果需要的話）
             if (clearSocket)
             {
@@ -502,9 +743,25 @@ namespace EquipmentSkinSystem
 
             if (agent != null)
             {
-                agent.transform.SetParent(socket, worldPositionStays: false);
-                agent.transform.localRotation = Quaternion.identity;
-                agent.transform.localPosition = Vector3.zero;
+                // 再次檢查 socket 是否仍然有效（防止在創建 agent 過程中被銷毀）
+                if (socket == null || IsGameObjectBeingDestroyed(socket.gameObject))
+                {
+                    Logger.Warning("Socket was destroyed during agent creation, destroying agent");
+                    GameObject.Destroy(agent.gameObject);
+                    return;
+                }
+
+                try
+                {
+                    agent.transform.SetParent(socket, worldPositionStays: false);
+                    agent.transform.localRotation = Quaternion.identity;
+                    agent.transform.localPosition = Vector3.zero;
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Error($"Failed to set agent parent: {ex.Message}");
+                    GameObject.Destroy(agent.gameObject);
+                }
             }
         }
 
@@ -745,13 +1002,21 @@ namespace EquipmentSkinSystem
             try
             {
                 Logger.Info("=== ForceRefreshAllEquipment called ===");
+
+                // 關鍵：先檢查是否為有效的遊戲場景
+                if (!IsValidGameplayScene())
+                {
+                    Logger.Warning("ForceRefreshAllEquipment: Not a valid gameplay scene, aborting refresh");
+                    return;
+                }
+
                 _isRefreshingAll = true; // 設置標記，避免 ForceRefreshMouthVisibility 重複渲染耳機
 
                 // 刷新玩家裝備
                 var mainCharacter = LevelManager.Instance?.MainCharacter;
                 if (mainCharacter != null)
                 {
-                    Logger.Debug("Refreshing Player equipment...");
+                    Logger.Info("Refreshing Player equipment...");
                     RefreshCharacterEquipment(mainCharacter, "Player");
                 }
                 else
@@ -763,15 +1028,15 @@ namespace EquipmentSkinSystem
                 var petCharacter = LevelManager.Instance?.PetCharacter;
                 if (petCharacter != null)
                 {
-                    Logger.Debug("Refreshing Pet equipment...");
+                    Logger.Info("Refreshing Pet equipment...");
                     RefreshCharacterEquipment(petCharacter, "Pet");
                 }
                 else
                 {
-                    Logger.Debug("PetCharacter is null (normal if no pet)");
+                    Logger.Info("PetCharacter is null (no pet in current scene)");
                 }
 
-                Logger.Info("=== All equipment refreshed ===");
+                Logger.Info("✅ === All equipment refreshed ===");
             }
             catch (Exception e)
             {
@@ -810,25 +1075,38 @@ namespace EquipmentSkinSystem
             // 即使沒有原始裝備，只要有啟用造型也需要透過 ChangeXXXModel 讓 Harmony Prefix 介入並決定是否渲染 Skin
             Logger.Debug($"[{characterName}] Triggering ChangeArmorModel...");
             if (armorSlot != null)
-                Traverse.Create(controller).Method("ChangeArmorModel", armorSlot).GetValue();
+                Traverse.Create(controller).Method("ChangeArmorModel", new object[] { armorSlot }).GetValue();
 
             Logger.Debug($"[{characterName}] Triggering ChangeBackpackModel...");
             if (backpackSlot != null)
-                Traverse.Create(controller).Method("ChangeBackpackModel", backpackSlot).GetValue();
+                Traverse.Create(controller).Method("ChangeBackpackModel", new object[] { backpackSlot }).GetValue();
 
             Logger.Debug($"[{characterName}] Triggering ChangeHelmatModel...");
             if (helmatSlot != null)
-                Traverse.Create(controller).Method("ChangeHelmatModel", helmatSlot).GetValue();
+            {
+                try
+                {
+                    Traverse.Create(controller).Method("ChangeHelmatModel", new object[] { helmatSlot }).GetValue();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"[{characterName}] Error calling ChangeHelmatModel: {ex.Message}");
+                }
+            }
+            else
+            {
+                Logger.Warning($"[{characterName}] helmatSlot is null, skipping ChangeHelmatModel");
+            }
 
             Logger.Debug($"[{characterName}] Triggering ChangeFaceMaskModel...");
             if (faceMaskSlot != null)
-                Traverse.Create(controller).Method("ChangeFaceMaskModel", faceMaskSlot).GetValue();
+                Traverse.Create(controller).Method("ChangeFaceMaskModel", new object[] { faceMaskSlot }).GetValue();
 
             Logger.Debug($"[{characterName}] Triggering ChangeHeadsetModel...");
             if (headsetSlot != null)
-                Traverse.Create(controller).Method("ChangeHeadsetModel", headsetSlot).GetValue();
+                Traverse.Create(controller).Method("ChangeHeadsetModel", new object[] { headsetSlot }).GetValue();
 
-            Logger.Info($"{characterName} equipment refreshed");
+            Logger.Info($"✅ {characterName} equipment refreshed");
         }
 
     }

@@ -13,12 +13,16 @@ namespace EquipmentSkinSystem
     /// </summary>
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        public static ModBehaviour? Instance { get; private set; }
+
         private SkinManagerUI? _skinManagerUI;
         private Harmony? _harmony;
         private const string HarmonyID = "com.equipmentskin.mod";
 
         void Awake()
         {
+            Instance = this; // 設置單例
+
             Logger.Info("==========================================================");
             Logger.Info("=== Equipment Skin System Mod Loaded ===");
             Logger.Info("Version 1.0.0");
@@ -63,15 +67,13 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
-        /// 場景加載完成時觸發（用於同副本內換圖）
+        /// 場景加載完成時觸發（僅記錄日誌）
         /// </summary>
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             try
             {
                 Logger.Debug($"Scene loaded: {scene.name}, mode: {mode}");
-                // 延遲刷新，確保場景完全加載
-                StartCoroutine(WaitForEquipmentAndRefresh());
             }
             catch (Exception e)
             {
@@ -80,15 +82,13 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
-        /// 關卡初始化完成時觸發
+        /// 關卡初始化完成時觸發（僅記錄日誌）
         /// </summary>
         private void OnLevelInitialized()
         {
             try
             {
-                Logger.Debug("Level initialized, waiting for equipment to load...");
-                // 使用協程等待裝備加載完成後再刷新
-                StartCoroutine(WaitForEquipmentAndRefresh());
+                Logger.Debug("Level initialized");
             }
             catch (Exception e)
             {
@@ -97,15 +97,23 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
-        /// 關卡初始化後觸發（更晚的時機）
+        /// 關卡初始化後觸發（唯一刷新裝備的時機）
         /// </summary>
         private void OnAfterLevelInitialized()
         {
             try
             {
-                Logger.Debug("After level initialized, waiting for equipment to load...");
-                // 再次嘗試刷新，確保裝備正確渲染
-                StartCoroutine(WaitForEquipmentAndRefresh());
+                Logger.Debug("After level initialized, checking and refreshing equipment...");
+
+                // 直接檢查物件並刷新，不用等待
+                if (LevelManager.Instance != null)
+                {
+                    HarmonyPatches.ForceRefreshAllEquipment();
+                }
+                else
+                {
+                    Logger.Warning("LevelManager.Instance is null, cannot refresh equipment");
+                }
             }
             catch (Exception e)
             {
@@ -114,86 +122,11 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
-        /// 等待裝備加載完成後刷新
-        /// </summary>
-        private IEnumerator WaitForEquipmentAndRefresh()
-        {
-            // 先等待一小段時間，讓角色初始化
-            yield return new WaitForSeconds(0.5f);
-
-            // 最多等待 5 秒，每 0.2 秒檢查一次裝備是否已加載
-            int maxAttempts = 25;
-            int attempts = 0;
-
-            while (attempts < maxAttempts)
-            {
-                bool equipmentReady = CheckEquipmentReady();
-
-                if (equipmentReady)
-                {
-                    try
-                    {
-                        HarmonyPatches.ForceRefreshAllEquipment();
-                        Logger.Info("Equipment refreshed after level initialization");
-                        yield break; // 裝備已加載，退出協程
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Error("Error refreshing equipment after level initialization", e);
-                        yield break;
-                    }
-                }
-
-                attempts++;
-                yield return new WaitForSeconds(0.2f);
-            }
-
-            // 如果超時，仍然嘗試刷新一次（可能裝備已經加載但檢查失敗）
-            try
-            {
-                Logger.Warning("Equipment loading timeout, attempting refresh anyway...");
-                HarmonyPatches.ForceRefreshAllEquipment();
-            }
-            catch (Exception e)
-            {
-                Logger.Error("Error refreshing equipment after timeout", e);
-            }
-        }
-
-        /// <summary>
         /// 檢查裝備是否已加載
         /// </summary>
-        private bool CheckEquipmentReady()
-        {
-            try
-            {
-                var mainCharacter = LevelManager.Instance?.MainCharacter;
-                if (mainCharacter == null)
-                    return false;
 
-                var controller = mainCharacter.GetComponent<CharacterEquipmentController>();
-                if (controller == null)
-                    return false;
-
-                // 檢查至少有一個槽位有裝備
-                var armorSlot = HarmonyLib.Traverse.Create(controller).Field("armorSlot").GetValue<Slot>();
-                var helmatSlot = HarmonyLib.Traverse.Create(controller).Field("helmatSlot").GetValue<Slot>();
-                var faceMaskSlot = HarmonyLib.Traverse.Create(controller).Field("faceMaskSlot").GetValue<Slot>();
-                var backpackSlot = HarmonyLib.Traverse.Create(controller).Field("backpackSlot").GetValue<Slot>();
-                var headsetSlot = HarmonyLib.Traverse.Create(controller).Field("headsetSlot").GetValue<Slot>();
-
-                // 至少有一個槽位有裝備就認為已加載
-                return (armorSlot != null && armorSlot.Content != null) ||
-                       (helmatSlot != null && helmatSlot.Content != null) ||
-                       (faceMaskSlot != null && faceMaskSlot.Content != null) ||
-                       (backpackSlot != null && backpackSlot.Content != null) ||
-                       (headsetSlot != null && headsetSlot.Content != null);
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        // 移除了 ShouldRenderInScene 和 HasValidLevelConfig
+        // 所有檢查統一在 HarmonyPatches.IsValidGameplayScene() 中進行
 
         void Update()
         {
@@ -299,6 +232,12 @@ namespace EquipmentSkinSystem
 
         void OnDestroy()
         {
+            // 清除單例
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+
             try
             {
                 // 取消訂閱事件
