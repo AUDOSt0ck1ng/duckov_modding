@@ -17,7 +17,7 @@ namespace EquipmentSkinSystem
         /// 攔截裝備外觀更新的核心方法
         /// 這是所有裝備外觀變更的最終調用點
         /// </summary>
-        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeEquipmentModel")]
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeEquipmentModel", new Type[] { typeof(Slot), typeof(Transform) })]
         public static class ChangeEquipmentModelPatch
         {
             [HarmonyPrefix]
@@ -26,7 +26,6 @@ namespace EquipmentSkinSystem
                 __state = slot;  // 保存 slot 給 Postfix 使用
                 try
                 {
-                    Logger.Debug("ChangeEquipmentModel Prefix triggered!");
 
                     // ====================================================================
                     // 關鍵修正：所有驗證檢查必須在任何操作（如清空 socket）之前完成
@@ -47,12 +46,6 @@ namespace EquipmentSkinSystem
                         Logger.Debug("Not target character, let game handle it");
                         return true; // 直接讓遊戲處理，不做任何操作
                     }
-
-                    if (characterType == CharacterType.Pet)
-                    {
-                        Logger.Info($"🐕 Pet equipment change detected! Slot: {slot?.Key}");
-                    }
-                    Logger.Debug($"✓ Target character identified: {characterType}");
 
                     // 檢查 3：槽位和 socket 有效性
                     if (slot == null || socket == null || socket.gameObject == null)
@@ -88,10 +81,7 @@ namespace EquipmentSkinSystem
                     // 所有檢查通過，開始處理邏輯
                     // ====================================================================
 
-                    Logger.Debug($"Processing slot: {slot.Key}, Content: {(slot.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
-
                     var config = GetSlotConfig(slotType.Value, characterType);
-                    Logger.Debug($"[{characterType}] Slot {slotType.Value} config: UseSkin={config.UseSkin}, SkinID={config.SkinItemTypeID}");
 
                     // 特殊處理：頭盔、耳機、面部是特例，全部由我們接管（因為遊戲本身有渲染問題）
                     // 當其中任一槽位變更時（包括脫下），都應該重新渲染所有三個槽位
@@ -691,6 +681,13 @@ namespace EquipmentSkinSystem
         /// <param name="clearSocket">是否清空 socket（預設為 true，當多個裝備共用同一個 socket 時設為 false）</param>
         private static void RenderEquipment(int itemTypeID, Transform socket, Slot actualSlot = null, bool clearSocket = true)
         {
+            // 檢查 itemTypeID 是否有效
+            if (itemTypeID <= 0)
+            {
+                Logger.Warning($"Invalid itemTypeID: {itemTypeID}, cannot render equipment");
+                return;
+            }
+
             // 檢查 socket 是否有效且未被銷毀
             if (socket == null || IsGameObjectBeingDestroyed(socket.gameObject))
             {
@@ -711,10 +708,17 @@ namespace EquipmentSkinSystem
             {
                 // 使用 slot.Content 的 Agent Prefab 創建 Agent（保持功能）
                 // 這樣 selfAgent.Item 會指向原本的 Item，功能組件（如 SoulCollector）才能正常工作
-                agent = actualSlot.Content.AgentUtilities.CreateAgent(
-                    CharacterEquipmentController.equipmentModelHash,
-                    ItemAgent.AgentTypes.equipment
-                );
+                ItemAgent prefab = actualSlot.Content.AgentUtilities.GetPrefab(CharacterEquipmentController.equipmentModelHash);
+                if (prefab != null)
+                {
+                    agent = actualSlot.Content.AgentUtilities.CreateAgent(prefab, ItemAgent.AgentTypes.equipment);
+                }
+                else if ((bool)actualSlot.Content.ItemGraphic)
+                {
+                    // 後備方案：使用 ItemGraphic（與遊戲原始代碼相同的邏輯）
+                    agent = ItemGraphicInfo.CreateAGraphic(actualSlot.Content, socket).gameObject.AddComponent<DuckovItemAgent>();
+                    actualSlot.Content.AgentUtilities.BindNewAgent(agent, ItemAgent.AgentTypes.equipment);
+                }
 
                 if (agent == null)
                 {
@@ -734,10 +738,17 @@ namespace EquipmentSkinSystem
                 Item tempItem = ItemAssetsCollection.InstantiateSync(itemTypeID);
                 if (tempItem != null)
                 {
-                    agent = tempItem.AgentUtilities.CreateAgent(
-                        CharacterEquipmentController.equipmentModelHash,
-                        ItemAgent.AgentTypes.equipment
-                    );
+                    ItemAgent prefab = tempItem.AgentUtilities.GetPrefab(CharacterEquipmentController.equipmentModelHash);
+                    if (prefab != null)
+                    {
+                        agent = tempItem.AgentUtilities.CreateAgent(prefab, ItemAgent.AgentTypes.equipment);
+                    }
+                    else if ((bool)tempItem.ItemGraphic)
+                    {
+                        // 後備方案：使用 ItemGraphic（與遊戲原始代碼相同的邏輯）
+                        agent = ItemGraphicInfo.CreateAGraphic(tempItem, socket).gameObject.AddComponent<DuckovItemAgent>();
+                        tempItem.AgentUtilities.BindNewAgent(agent, ItemAgent.AgentTypes.equipment);
+                    }
                 }
             }
 
@@ -781,17 +792,6 @@ namespace EquipmentSkinSystem
                     return;
                 }
 
-                ItemAgent skinAgentPrefab = skinItem.AgentUtilities.GetPrefab(CharacterEquipmentController.equipmentModelHash);
-                if (skinAgentPrefab == null)
-                {
-                    Logger.Warning($"Failed to get skin agent prefab for item {skinItemTypeID}");
-                    GameObject.Destroy(skinItem.gameObject);
-                    return;
-                }
-
-                // 實例化外觀 Agent 來獲取視覺模型
-                ItemAgent skinAgent = UnityEngine.Object.Instantiate(skinAgentPrefab);
-
                 // 隱藏原本的視覺子物件（保留功能組件在 agent 根物件上）
                 var originalRenderers = agent.GetComponentsInChildren<Renderer>(true);
                 foreach (var renderer in originalRenderers)
@@ -803,21 +803,46 @@ namespace EquipmentSkinSystem
                     }
                 }
 
-                // 複製外觀 Agent 的所有視覺子物件
-                foreach (Transform skinChild in skinAgent.transform)
+                // 嘗試使用 Agent Prefab
+                ItemAgent skinAgentPrefab = skinItem.AgentUtilities.GetPrefab(CharacterEquipmentController.equipmentModelHash);
+                if (skinAgentPrefab != null)
                 {
-                    // 跳過可能包含功能組件的子物件
-                    if (skinChild.name.Contains("Collider") || skinChild.name.Contains("Trigger"))
+                    // 實例化外觀 Agent 來獲取視覺模型
+                    ItemAgent skinAgent = UnityEngine.Object.Instantiate(skinAgentPrefab);
+
+                    // 複製外觀 Agent 的所有視覺子物件
+                    foreach (Transform skinChild in skinAgent.transform)
                     {
-                        continue;
+                        // 跳過可能包含功能組件的子物件
+                        if (skinChild.name.Contains("Collider") || skinChild.name.Contains("Trigger"))
+                        {
+                            continue;
+                        }
+
+                        var clonedChild = UnityEngine.Object.Instantiate(skinChild.gameObject, agent.transform);
+                        clonedChild.name = skinChild.name;
                     }
 
-                    var clonedChild = UnityEngine.Object.Instantiate(skinChild.gameObject, agent.transform);
-                    clonedChild.name = skinChild.name;
+                    // 銷毀臨時 Agent
+                    GameObject.Destroy(skinAgent.gameObject);
+                }
+                else if ((bool)skinItem.ItemGraphic)
+                {
+                    // 後備方案：使用 ItemGraphic
+                    ItemGraphicInfo graphic = ItemGraphicInfo.CreateAGraphic(skinItem, agent.transform);
+                    if (graphic != null)
+                    {
+                        graphic.transform.SetParent(agent.transform, false);
+                        graphic.transform.localPosition = Vector3.zero;
+                        graphic.transform.localRotation = Quaternion.identity;
+                    }
+                }
+                else
+                {
+                    Logger.Warning($"Skin item {skinItemTypeID} has neither AgentPrefab nor ItemGraphic");
                 }
 
-                // 銷毀臨時物件
-                GameObject.Destroy(skinAgent.gameObject);
+                // 銷毀臨時 Item
                 GameObject.Destroy(skinItem.gameObject);
             }
             catch (Exception e)
@@ -863,33 +888,65 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
-        /// 攔截裝備外觀更新方法，記錄物品 ID
-        /// 因為所有槽位都會調用 ChangeEquipmentModel，所以在這裡記錄就夠了
+        /// 診斷補丁：攔截所有裝備變更方法來找出實際被調用的方法
         /// </summary>
-        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeEquipmentModel")]
-        public static class EquipmentChangeLogger
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeArmorModel")]
+        public static class DiagnosticPatch_ChangeArmorModel
         {
             [HarmonyPrefix]
-            public static void LogPrefix(Slot slot, Transform socket)
+            public static void Prefix(Slot slot)
             {
-                try
-                {
-                    Logger.Debug($"ChangeEquipmentModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? "Valid" : "NULL")}");
+                Logger.Debug($"🔍 DIAGNOSTIC: ChangeArmorModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
+            }
+        }
 
-                    if (slot != null && slot.Content != null)
-                    {
-                        Logger.Debug($"📦 裝備變更 - 物品 ID: {slot.Content.TypeID}, 名稱: {slot.Content.name}");
-                    }
-                    else if (slot != null && slot.Content == null)
-                    {
-                        Logger.Debug("📦 裝備移除 - 槽位已清空");
-                    }
-                }
-                catch (Exception e)
-                {
-                    Logger.Error("Error logging equipment change", e);
-                    Logger.Error($"Stack: {e.StackTrace}");
-                }
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeHelmatModel")]
+        public static class DiagnosticPatch_ChangeHelmatModel
+        {
+            [HarmonyPrefix]
+            public static void Prefix(Slot slot)
+            {
+                Logger.Debug($"🔍 DIAGNOSTIC: ChangeHelmatModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
+            }
+        }
+
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeHeadsetModel")]
+        public static class DiagnosticPatch_ChangeHeadsetModel
+        {
+            [HarmonyPrefix]
+            public static void Prefix(Slot slot)
+            {
+                Logger.Debug($"🔍 DIAGNOSTIC: ChangeHeadsetModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
+            }
+        }
+
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeBackpackModel")]
+        public static class DiagnosticPatch_ChangeBackpackModel
+        {
+            [HarmonyPrefix]
+            public static void Prefix(Slot slot)
+            {
+                Logger.Debug($"🔍 DIAGNOSTIC: ChangeBackpackModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
+            }
+        }
+
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeFaceMaskModel")]
+        public static class DiagnosticPatch_ChangeFaceMaskModel
+        {
+            [HarmonyPrefix]
+            public static void Prefix(Slot slot)
+            {
+                Logger.Debug($"🔍 DIAGNOSTIC: ChangeFaceMaskModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? slot.Content.TypeID.ToString() : "NULL")}");
+            }
+        }
+
+        [HarmonyPatch(typeof(CharacterEquipmentController), "ChangeEquipmentModel")]
+        public static class DiagnosticPatch_ChangeEquipmentModel
+        {
+            [HarmonyPrefix]
+            public static void Prefix(Slot slot, Transform socket)
+            {
+                Logger.Debug($"🔍 DIAGNOSTIC: ChangeEquipmentModel called! Slot: {(slot != null ? "Valid" : "NULL")}, Content: {(slot?.Content != null ? slot.Content.TypeID.ToString() : "NULL")}, Socket: {(socket != null ? socket.name : "NULL")}");
             }
         }
 

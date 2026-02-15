@@ -25,46 +25,80 @@ namespace EquipmentSkinSystem
 
             Logger.Info("==========================================================");
             Logger.Info("=== Equipment Skin System Mod Loaded ===");
-            Logger.Info("Version 1.0.0");
+            Logger.Info("Version 1.1.12");
             Logger.Info("Awake called - Mod is loading...");
             Logger.Info("==========================================================");
+
+            // 立即應用 Harmony patches，確保在遊戲開始前就攔截裝備渲染
+            Logger.Info("Applying Harmony patches in Awake()...");
+            ApplyHarmonyPatches();
         }
 
         void Start()
         {
+            Logger.Info(">>> Start() method called <<<");
+            Logger.Info("Starting initialization coroutine to avoid blocking Unity's main thread");
+            StartCoroutine(InitializeAsync());
+        }
+
+        private IEnumerator InitializeAsync()
+        {
+            Logger.Info(">>> InitializeAsync() coroutine started <<<");
+
+            // 等待一幀，讓 Unity 完成資源卸載
+            yield return null;
+            Logger.Info("Waited one frame, Unity resource unloading should be complete");
+
+            Logger.Info("Step 1: ConfigReader.ReloadConfig()");
+            try
+            { ConfigReader.ReloadConfig(); }
+            catch (Exception e) { Logger.Error("Step 1 failed", e); }
+
+            Logger.Info("Step 2: InitializeDataManager()");
+            try
+            { InitializeDataManager(); }
+            catch (Exception e) { Logger.Error("Step 2 failed", e); }
+
+            // 再等一幀，確保資料管理器初始化完成
+            yield return null;
+            Logger.Info("Waited another frame after data manager initialization");
+
+            Logger.Info("Step 3: Localization.Initialize()");
+            try
+            { Localization.Initialize(); }
+            catch (Exception e) { Logger.Error("Step 3 failed", e); }
+
+            Logger.Info("Step 4: Localization.SubscribeToGameLanguageChange()");
+            try
+            { Localization.SubscribeToGameLanguageChange(); }
+            catch (Exception e) { Logger.Error("Step 4 failed", e); }
+
+            Logger.Info("Step 5: ApplyHarmonyPatches()");
+            try
+            { ApplyHarmonyPatches(); }
+            catch (Exception e) { Logger.Error("Step 5 failed", e); }
+
+            Logger.Info("Step 6: Subscribe to LevelManager events");
             try
             {
-                // 初始化配置讀取器（確保配置文件存在）
-                ConfigReader.ReloadConfig();
-
-                // 初始化數據管理器
-                InitializeDataManager();
-
-                // 初始化語言系統
-                Localization.Initialize();
-
-                // 訂閱遊戲的語言變更事件
-                Localization.SubscribeToGameLanguageChange();
-
-                // 應用 Harmony 補丁
-                ApplyHarmonyPatches();
-
-                // 訂閱關卡初始化完成事件，自動刷新裝備
                 LevelManager.OnLevelInitialized += OnLevelInitialized;
                 LevelManager.OnAfterLevelInitialized += OnAfterLevelInitialized;
+            }
+            catch (Exception e) { Logger.Error("Step 6 failed", e); }
 
-                // 訂閱場景加載事件（用於同副本內換圖）
-                SceneManager.sceneLoaded += OnSceneLoaded;
+            Logger.Info("Step 7: Subscribe to SceneManager events");
+            try
+            { SceneManager.sceneLoaded += OnSceneLoaded; }
+            catch (Exception e) { Logger.Error("Step 7 failed", e); }
 
-                Logger.Info("Initialization completed successfully!");
+            Logger.Info("Initialization completed successfully!");
+            try
+            {
                 KeyCode toggleKey = EquipmentSkinDataManager.Instance.AppSettings.GetToggleUIKey();
                 Logger.Info($"Press {toggleKey} to open UI (UI will be created on first use)");
                 Logger.Info($"Config file location: {Path.Combine(Application.persistentDataPath, "EquipmentSkinSystem", "skin_config.json")}");
             }
-            catch (Exception e)
-            {
-                Logger.Error("Initialization failed", e);
-            }
+            catch (Exception e) { Logger.Error("Failed to get toggle key", e); }
         }
 
         /// <summary>
@@ -178,30 +212,24 @@ namespace EquipmentSkinSystem
             {
                 _harmony = new Harmony(HarmonyID);
 
-                // 僅使用 Type 與 Harmony 的 CreateClassProcessor，避免在舊版 Mono 上存取 System.Reflection.Assembly
                 Type[] patchTypes =
                 {
                     typeof(HarmonyPatches.ChangeEquipmentModelPatch),
-                    typeof(HarmonyPatches.EquipmentChangeLogger)
+                    typeof(HarmonyPatches.DiagnosticPatch_ChangeArmorModel),
+                    typeof(HarmonyPatches.DiagnosticPatch_ChangeHelmatModel),
+                    typeof(HarmonyPatches.DiagnosticPatch_ChangeHeadsetModel),
+                    typeof(HarmonyPatches.DiagnosticPatch_ChangeBackpackModel),
+                    typeof(HarmonyPatches.DiagnosticPatch_ChangeFaceMaskModel),
+                    typeof(HarmonyPatches.DiagnosticPatch_ChangeEquipmentModel)
                 };
 
-                int patchCount = 0;
                 foreach (var patchType in patchTypes)
                 {
                     var processor = _harmony.CreateClassProcessor(patchType);
                     processor.Patch();
-                    patchCount++;
-                    Logger.Debug($"Patched class: {patchType.FullName}");
                 }
 
-                if (patchCount == 0)
-                {
-                    Logger.Warning("No Harmony patches were applied. Please verify target CLR support.");
-                }
-                else
-                {
-                    Logger.Info($"Total patches applied: {patchCount}");
-                }
+                Logger.Info($"✅ Harmony patches applied successfully");
             }
             catch (Exception e)
             {

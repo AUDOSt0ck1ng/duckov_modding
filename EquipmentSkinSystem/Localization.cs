@@ -24,20 +24,38 @@ namespace EquipmentSkinSystem
         /// </summary>
         public static void Initialize()
         {
-            // 優先從遊戲本身取得語言設定
-            string gameLanguage = GetGameLanguage();
-            if (!string.IsNullOrEmpty(gameLanguage))
+            Logger.Info("[Localization] Initialize START");
+            try
             {
-                _currentLanguage = gameLanguage;
-                Logger.Info($"Language initialized from game: {_currentLanguage}");
+                // 優先從遊戲本身取得語言設定
+                Logger.Info("[Localization] Calling GetGameLanguage()");
+                string gameLanguage = GetGameLanguage();
+                Logger.Info($"[Localization] GetGameLanguage() returned: {gameLanguage ?? "null"}");
+
+                if (!string.IsNullOrEmpty(gameLanguage))
+                {
+                    _currentLanguage = gameLanguage;
+                    Logger.Info($"Language initialized from game: {_currentLanguage}");
+                }
+                else
+                {
+                    // 如果無法從遊戲取得，則使用保存的設定
+                    Logger.Info("[Localization] Getting language from AppSettings");
+                    _currentLanguage = EquipmentSkinDataManager.Instance.AppSettings.Language;
+                    Logger.Info($"Language initialized from saved settings: {_currentLanguage}");
+                }
+
+                Logger.Info("[Localization] Calling LoadTranslations()");
+                LoadTranslations();
+                Logger.Info("[Localization] Initialize COMPLETE");
             }
-            else
+            catch (Exception e)
             {
-                // 如果無法從遊戲取得，則使用保存的設定
-                _currentLanguage = EquipmentSkinDataManager.Instance.AppSettings.Language;
-                Logger.Info($"Language initialized from saved settings: {_currentLanguage}");
+                Logger.Error("[Localization] Initialize FAILED", e);
+                // 設定默認語言避免後續錯誤
+                _currentLanguage = "zh-TW";
+                LoadTranslations();
             }
-            LoadTranslations();
         }
 
         /// <summary>

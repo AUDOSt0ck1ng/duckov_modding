@@ -364,25 +364,39 @@ namespace EquipmentSkinSystem
                             Logger.Warning($"LoadFromJson - JSON snippet: {json.Substring(0, Math.Min(200, json.Length))}...");
                         }
 
+                        Logger.Debug("[LoadFromJson] Step 3.1: Parsing PlayerProfile...");
                         var playerMatch = System.Text.RegularExpressions.Regex.Match(json, @"""PlayerProfile"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
+                        Logger.Debug("[LoadFromJson] Step 3.2: PlayerProfile regex completed");
                         if (playerMatch.Success)
                         {
+                            Logger.Debug("[LoadFromJson] Step 3.3: Parsing PlayerProfile JSON...");
                             _playerProfile = ParseJson(playerMatch.Groups[1].Value);
+                            Logger.Debug("[LoadFromJson] Step 3.4: Validating PlayerProfile...");
                             ValidateAndFixProfile(_playerProfile, "Player");
+                            Logger.Debug("[LoadFromJson] Step 3.5: PlayerProfile loaded");
                         }
 
+                        Logger.Debug("[LoadFromJson] Step 4.1: Parsing PetProfile...");
                         var petMatch = System.Text.RegularExpressions.Regex.Match(json, @"""PetProfile"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
+                        Logger.Debug("[LoadFromJson] Step 4.2: PetProfile regex completed");
                         if (petMatch.Success)
                         {
+                            Logger.Debug("[LoadFromJson] Step 4.3: Parsing PetProfile JSON...");
                             _petProfile = ParseJson(petMatch.Groups[1].Value);
+                            Logger.Debug("[LoadFromJson] Step 4.4: Validating PetProfile...");
                             ValidateAndFixProfile(_petProfile, "Pet");
+                            Logger.Debug("[LoadFromJson] Step 4.5: PetProfile loaded");
                         }
 
                         // 載入 AppSettings
+                        Logger.Debug("[LoadFromJson] Step 5.1: Parsing AppSettings...");
                         var appSettingsMatch = System.Text.RegularExpressions.Regex.Match(json, @"""AppSettings"":\s*(\{(?:[^{}]|(?<open>\{)|(?<-open>\}))+(?(open)(?!))\})", System.Text.RegularExpressions.RegexOptions.Singleline);
+                        Logger.Debug("[LoadFromJson] Step 5.2: AppSettings regex completed");
                         if (appSettingsMatch.Success)
                         {
+                            Logger.Debug("[LoadFromJson] Step 5.3: Parsing AppSettings JSON...");
                             _appSettings = ParseAppSettings(appSettingsMatch.Groups[1].Value);
+                            Logger.Debug("[LoadFromJson] Step 5.4: AppSettings loaded");
                         }
                         else
                         {
