@@ -1,5 +1,11 @@
 本儲存庫中的 brnach 是依照功能去切分的，main brnach 只是提供一個 vibe coding 的起點配置。
 
+最主要的開發項目是 EquipmentSkinSystem 這個 branch，mod 發布於
+https://steamcommunity.com/sharedfiles/filedetails/?id=3608017334
+
+當下近況:
+<img width="967" height="1555" alt="image" src="https://github.com/user-attachments/assets/c98d40af-4843-4015-b61a-1632495d9379" />
+
 以下來自原始專案:
 
 # Duckov Modding 示例 (Duckov Modding Example)
