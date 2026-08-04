@@ -1,3 +1,6 @@
+The branches in this repository are organized by functionality; the `main` branch simply provides a starting point for "vibe coding."
+
+The following is from the original project:
 # Duckov Modding Example
 
 _This is an example project for modding Escape From Duckov._
