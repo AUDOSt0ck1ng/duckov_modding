@@ -1,5 +1,10 @@
 The branches in this repository are organized by functionality; the `main` branch simply provides a starting point for "vibe coding."
 
+The main development work is currently located in the EquipmentSkinSystem branch. The mod is published on https://steamcommunity.com/sharedfiles/filedetails/?id=3608017334
+
+Current:
+<img width="967" height="1555" alt="image" src="https://github.com/user-attachments/assets/c98d40af-4843-4015-b61a-1632495d9379" />
+
 The following is from the original project:
 # Duckov Modding Example
 
