@@ -1,3 +1,7 @@
+本儲存庫中的 brnach 是依照功能去切分的，main brnach 只是提供一個 vibe coding 的起點配置。
+
+以下來自原始專案:
+
 # Duckov Modding 示例 (Duckov Modding Example)
 
 _《逃离鸭科夫》的 mod 示例说明。_
