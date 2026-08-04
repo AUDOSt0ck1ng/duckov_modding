@@ -1,3 +1,6 @@
+The branches in this repository are organized by functionality; the `main` branch simply provides a starting point for "vibe coding."
+
+The following is from the original project:
 # Duckov 모딩 예제
 
 _Escape From Duckov 모딩을 위한 예제 프로젝트입니다._
