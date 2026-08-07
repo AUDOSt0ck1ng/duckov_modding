@@ -1,3 +1,11 @@
+# Duckov Modding Example
+
+_This is an example project for modding Escape From Duckov._
+
+[中文](README.md) | English | [한국어](README_KO.md)
+
+[Notable APIs](Documents/NotableAPIs.md)
+
 The branches in this repository are organized by functionality; the `main` branch simply provides a starting point for "vibe coding."
 
 The main development work is currently located in the EquipmentSkinSystem branch. The mod is published on https://steamcommunity.com/sharedfiles/filedetails/?id=3608017334
@@ -6,13 +14,7 @@ Current:
 <img width="967" height="1555" alt="image" src="https://github.com/user-attachments/assets/c98d40af-4843-4015-b61a-1632495d9379" />
 
 The following is from the original project:
-# Duckov Modding Example
 
-_This is an example project for modding Escape From Duckov._
-
-[中文](README.md) | English | [한국어](README_KO.md)
-
-[Notable APIs](Documents/NotableAPIs.md)
 ## About Harmony
 
 The game don't have Harmony library integrated. We noticed that different versions of Harmony library conflicts each other when used in different Mods. Please consider using the most used version of Harmony library in the community, probably the newest 2.4.1 release.
