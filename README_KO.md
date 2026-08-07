@@ -1,3 +1,11 @@
+# Duckov 모딩 예제
+
+_Escape From Duckov 모딩을 위한 예제 프로젝트입니다._
+
+[中文](README.md) | [English](README_EN.md) | [한국어](README_KO.md)
+
+[주요 API 문서](Documents/NotableAPIs.md)
+
 The branches in this repository are organized by functionality; the `main` branch simply provides a starting point for "vibe coding."
 
 The main development work is currently located in the EquipmentSkinSystem branch. The mod is published on https://steamcommunity.com/sharedfiles/filedetails/?id=3608017334
@@ -6,13 +14,6 @@ Current:
 <img width="967" height="1555" alt="image" src="https://github.com/user-attachments/assets/c98d40af-4843-4015-b61a-1632495d9379" />
 
 The following is from the original project:
-# Duckov 모딩 예제
-
-_Escape From Duckov 모딩을 위한 예제 프로젝트입니다._
-
-[中文](README.md) | [English](README_EN.md) | [한국어](README_KO.md)
-
-[주요 API 문서](Documents/NotableAPIs.md)
 
 ## About Harmony
 
