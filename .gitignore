@@ -56,3 +56,9 @@ artifacts/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Claude Code 個人本機設定
+.claude/settings.local.json
+
+# Dev Container 自動產生的鎖定檔
+.devcontainer/devcontainer-lock.json
