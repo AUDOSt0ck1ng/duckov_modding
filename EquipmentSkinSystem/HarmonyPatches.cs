@@ -13,6 +13,11 @@ namespace EquipmentSkinSystem
     /// </summary>
     public static class HarmonyPatches
     {
+        // 快取玩家和狗的 CharacterEquipmentController 引用
+        // 用於在 Prefix 中快速判斷是否為目標角色，避免每次都用反射
+        private static CharacterEquipmentController _cachedPlayerController;
+        private static CharacterEquipmentController _cachedPetController;
+
         /// <summary>
         /// 攔截裝備外觀更新的核心方法
         /// 這是所有裝備外觀變更的最終調用點
@@ -26,6 +31,15 @@ namespace EquipmentSkinSystem
                 __state = slot;  // 保存 slot 給 Postfix 使用
                 try
                 {
+                    // ====================================================================
+                    // 快速路徑：直接比對快取的 controller 引用，不是玩家或狗就立刻跳過
+                    // 避免對所有敵人（擊殺時清理裝備）都執行昂貴的反射操作
+                    // ====================================================================
+                    if (_cachedPlayerController != null || _cachedPetController != null)
+                    {
+                        if (__instance != _cachedPlayerController && __instance != _cachedPetController)
+                            return true;
+                    }
 
                     // ====================================================================
                     // 關鍵修正：所有驗證檢查必須在任何操作（如清空 socket）之前完成
@@ -130,8 +144,13 @@ namespace EquipmentSkinSystem
                     // 已啟用外觀覆蓋：完全接管渲染
                     if (config.SkinItemTypeID == -1)
                     {
-                        // ID = -1：隱藏外觀（不渲染）
+                        // ID = -1：隱藏外觀
+                        // 有實際裝備時仍需建立 Agent（只關閉 Renderer），否則掛在 Agent 上的功能組件（如 SoulCollector）會失效
                         Logger.Debug($"Hiding equipment for {slotType.Value}");
+                        if (slot.Content != null)
+                        {
+                            RenderEquipment(slot.Content.TypeID, socket, slot, hideVisual: true);
+                        }
                         return false;
                     }
                     else if (config.SkinItemTypeID > 0)
@@ -414,6 +433,14 @@ namespace EquipmentSkinSystem
         }
 
         /// <summary>
+        /// 是否為「設定隱藏且槽位有實際裝備」的情況
+        /// </summary>
+        private static bool IsHiddenWithContent(Slot slot, SlotSkinConfig config)
+        {
+            return config.UseSkin && config.SkinItemTypeID == -1 && slot?.Content != null;
+        }
+
+        /// <summary>
         /// 延遲渲染頭盔槽位（Coroutine）
         /// 用於避免在 Item.OnDestroy() 過程中操作 socket
         /// </summary>
@@ -501,17 +528,30 @@ namespace EquipmentSkinSystem
                 Logger.Debug($"Rendering headset ID {headsetID.Value}");
                 RenderEquipment(headsetID.Value, helmatSocket, headsetSlotToUse, clearSocket: false);
             }
+            else if (IsHiddenWithContent(headsetSlotToUse, headsetConfig))
+            {
+                // 隱藏但有實際裝備：建立不可見的 Agent，保留功能組件
+                RenderEquipment(headsetSlotToUse.Content.TypeID, helmatSocket, headsetSlotToUse, clearSocket: false, hideVisual: true);
+            }
 
             if (helmetID.HasValue)
             {
                 Logger.Debug($"Rendering helmet ID {helmetID.Value}");
                 RenderEquipment(helmetID.Value, helmatSocket, helmetSlotToUse, clearSocket: false);
             }
+            else if (IsHiddenWithContent(helmetSlotToUse, helmatConfig))
+            {
+                RenderEquipment(helmetSlotToUse.Content.TypeID, helmatSocket, helmetSlotToUse, clearSocket: false, hideVisual: true);
+            }
 
             if (faceMaskID.HasValue && faceMaskSocket != null)
             {
                 Logger.Debug($"Rendering face mask ID {faceMaskID.Value}");
                 RenderEquipment(faceMaskID.Value, faceMaskSocket, faceMaskSlotToUse, clearSocket: false);
+            }
+            else if (faceMaskSocket != null && IsHiddenWithContent(faceMaskSlotToUse, faceMaskConfig))
+            {
+                RenderEquipment(faceMaskSlotToUse.Content.TypeID, faceMaskSocket, faceMaskSlotToUse, clearSocket: false, hideVisual: true);
             }
 
         }
@@ -679,7 +719,7 @@ namespace EquipmentSkinSystem
         /// <param name="socket">要掛載的 socket</param>
         /// <param name="actualSlot">實際裝備的 slot（如果有，Agent 會綁定到此 slot.Content 以保持功能正常）</param>
         /// <param name="clearSocket">是否清空 socket（預設為 true，當多個裝備共用同一個 socket 時設為 false）</param>
-        private static void RenderEquipment(int itemTypeID, Transform socket, Slot actualSlot = null, bool clearSocket = true)
+        private static void RenderEquipment(int itemTypeID, Transform socket, Slot actualSlot = null, bool clearSocket = true, bool hideVisual = false)
         {
             // 檢查 itemTypeID 是否有效
             if (itemTypeID <= 0)
@@ -726,9 +766,14 @@ namespace EquipmentSkinSystem
                     return;
                 }
 
-                // 如果外觀 ID 與實際裝備 ID 不同，替換視覺模型
-                if (itemTypeID != actualSlot.Content.TypeID)
+                if (hideVisual)
                 {
+                    // 隱藏外觀：保留 Agent 與功能組件，只關閉所有 Renderer
+                    HideAgentVisual(agent);
+                }
+                else if (itemTypeID != actualSlot.Content.TypeID)
+                {
+                    // 如果外觀 ID 與實際裝備 ID 不同，替換視覺模型
                     ReplaceAgentVisualModel(agent, itemTypeID);
                 }
             }
@@ -773,6 +818,24 @@ namespace EquipmentSkinSystem
                     Logger.Error($"Failed to set agent parent: {ex.Message}");
                     GameObject.Destroy(agent.gameObject);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 隱藏 Agent 的所有視覺（保留功能組件，如 SoulCollector）
+        /// </summary>
+        private static void HideAgentVisual(ItemAgent agent)
+        {
+            try
+            {
+                foreach (var renderer in agent.GetComponentsInChildren<Renderer>(true))
+                {
+                    renderer.enabled = false;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Error hiding agent visual: {e.Message}", e);
             }
         }
 
@@ -1069,27 +1132,31 @@ namespace EquipmentSkinSystem
 
                 _isRefreshingAll = true; // 設置標記，避免 ForceRefreshMouthVisibility 重複渲染耳機
 
-                // 刷新玩家裝備
+                // 刷新玩家裝備並快取 controller 引用
                 var mainCharacter = LevelManager.Instance?.MainCharacter;
                 if (mainCharacter != null)
                 {
                     Logger.Info("Refreshing Player equipment...");
+                    _cachedPlayerController = mainCharacter.GetComponent<CharacterEquipmentController>();
                     RefreshCharacterEquipment(mainCharacter, "Player");
                 }
                 else
                 {
+                    _cachedPlayerController = null;
                     Logger.Warning("MainCharacter is null, cannot refresh Player equipment");
                 }
 
-                // 刷新狗的裝備
+                // 刷新狗的裝備並快取 controller 引用
                 var petCharacter = LevelManager.Instance?.PetCharacter;
                 if (petCharacter != null)
                 {
                     Logger.Info("Refreshing Pet equipment...");
+                    _cachedPetController = petCharacter.GetComponent<CharacterEquipmentController>();
                     RefreshCharacterEquipment(petCharacter, "Pet");
                 }
                 else
                 {
+                    _cachedPetController = null;
                     Logger.Info("PetCharacter is null (no pet in current scene)");
                 }
 
